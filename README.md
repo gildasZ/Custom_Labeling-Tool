@@ -2,7 +2,7 @@
 
 A custom Django-Plotly-Dash based labeling tool used for ECG waveforms 
 
-There are 3 things to do to run the WebApp:
+There are few things to do before you run the WebApp. I will describe them below, as well as how to run the app:
 
 1. Insert the appropriate BASE_FILE_PATH in settings.py:\n
 You will have to go into settings.py in the main app ('label_V02' folder that is in 'Label_V02' project folder), and insert the directory path as indicated here:\n
