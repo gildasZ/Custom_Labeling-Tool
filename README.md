@@ -66,7 +66,7 @@ Open your web browser and navigate to [http://127.0.0.1:8000/](http://127.0.0.1:
 - Your annotation will be displayed below the waveform.
 
 ## Contributing
-Feel free to fork this project and contribute by submitting a pull request. We appreciate your input!
+Feel free to fork this project and contribute by submitting a pull request. I appreciate your input!
 
 ## License
 This project is licensed under the MIT License - see the LICENSE.md file for details.
