@@ -8,7 +8,7 @@ There are few things to do before you run the WebApp. I will describe them below
    
 You will have to go into settings.py in the main app ('label_V02' folder that is in 'Label_V02' project folder), and insert the directory path as indicated here:
 
-BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r" INSERT THE PATH OF THE ROOT DIRECTORY WHERE YOUR PLACED 'Testing_Folder_Filtered' ('Testing_Folder_Filtered' Should not be included in the path and the path must not end with / or '\') ")
+BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r" INSERT THE PATH OF THE ROOT DIRECTORY WHERE YOUR PLACED 'Testing_Folder_Filtered' ('Testing_Folder_Filtered' Should not be included in the path and the path must not end with / or #\) ")
 
 3. Create a new virtual environment in the project folder ('Label_V02' folder, 'Label' with capital L),
    then 'cd' into the project folder,
