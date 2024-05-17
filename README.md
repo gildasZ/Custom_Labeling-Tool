@@ -44,3 +44,29 @@ You will see the following line in the terminal, indicating the server is runnin
 Starting ASGI/Daphne version 4.1.2 development server at http://127.0.0.1:8000/
  ```
 
+
+Open your web browser and navigate to [http://127.0.0.1:8000/](http://127.0.0.1:8000/) to access the WebApp.
+
+## Usage
+
+### Select Your Directory:
+- Click on the "Select your directory!" button.
+- Choose the `Testing_Folder_Filtered` directory provided in the repository.
+
+### Select a Lead:
+- Use the dropdown menu right of "Choose a Lead:" to select any ECG lead.
+
+### Viewing Waveforms:
+- The waveform corresponding to the selected lead will be displayed.
+
+### Adding Annotations:
+- Click on the waveform where you want to start the annotation, and click again where it ends.
+- An input field will appear. Type in your annotation description.
+- Submit the annotation by clicking 'Submit' or pressing 'Enter'.
+- Your annotation will be displayed below the waveform.
+
+## Contributing
+Feel free to fork this project and contribute by submitting a pull request. We appreciate your input!
+
+## License
+This project is licensed under the MIT License - see the LICENSE.md file for details.
