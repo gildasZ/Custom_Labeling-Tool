@@ -37,3 +37,5 @@ To run the application, execute the following command:
 ```bash
 python manage.py runserver
  ```
+
+You will see the following line in the terminal, indicating the server is running:
