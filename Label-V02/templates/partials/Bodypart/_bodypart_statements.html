@@ -1,0 +1,130 @@
+
+<!-- partials/Bodypart/_bodypart_statements.html -->
+<style>
+    .section-header {
+        display: flex;
+        flex-direction: row;    /* Horizontal layout to include sidebar */
+        height: 100%;
+        width: 100%;            /* Take full width of the parent */
+        background-color: #353434;
+        align-items: center;
+        justify-content: center;
+        /* flex-shrink: 0; Prevent shrinking: Already used on the parent container */
+    }
+
+    .section-label {
+        flex: 1;
+        text-align: center;
+        color: white;
+        font-size: 20px;
+        box-sizing: border-box;
+        border: 5px solid hsl(61, 84%, 20%);
+        background-color: hsl(61, 84%, 20%);
+        border-radius: 10px;
+    }
+
+    .statements-container {
+        overflow: hidden; /* Hide overflow*/
+        height: 95%; /* Adjust to 95% of the section-header height, dynamically */
+        width: 1400px;
+        box-sizing: border-box;
+        border: 5px solid hsl(239, 66%, 24%);
+        background-color: #575757;
+        border-radius: 10px;
+        position: relative; /* Necessary for absolute positioning of children */
+        display: flex; /* Maintain center alignment */
+        justify-content: center; /* Center horizontally */
+        align-items: center; /* Center vertically */
+    }
+
+    .statement {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        padding-left: 10px;
+        overflow-x: auto;
+        font-size: 25px;
+        font-weight: bold;
+        box-sizing: border-box;
+        color: #4fa1ee;
+        white-space: nowrap;
+    }
+</style>
+
+<header class="section-header">
+    <div class="section-label">
+        Statements (scrollable):
+    </div>
+    <div class="statements-container"></div> <!-- Container for statements -->
+</header>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        function debounce(func, wait, immediate) {
+            var timeout;
+            return function() {
+                var context = this, args = arguments;
+                var later = function() {
+                    timeout = null;
+                    if (!immediate) func.apply(context, args);
+                };
+                var callNow = immediate && !timeout;
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+                if (callNow) func.apply(context, args);
+            };
+        }
+
+        //Consider this if you have issues with statements displaying weirdly: isEventBound 
+        document.addEventListener('dataReceived', function(event) {
+            const data = event.detail;
+            const statementsContainer = document.querySelector('.statements-container');
+            statementsContainer.innerHTML = ''; // Clear existing statements first
+            let currentIndex = 0;
+            let isTransitioning = false; // Lock to prevent rapid transitions
+
+            if (data.statements && Array.isArray(data.statements)) {
+                const initDiv = document.createElement('div');
+                initDiv.className = 'statement';
+                initDiv.textContent = data.statements[0];
+                statementsContainer.appendChild(initDiv);
+
+                const handleScroll = debounce(function(e) {
+                    if (isTransitioning) return;
+                    e.preventDefault();
+                    isTransitioning = true;
+
+                    // Remove the current statement
+                    statementsContainer.removeChild(statementsContainer.firstChild);
+
+                    // Calculate the next statement index
+                    if (e.deltaY > 0) {
+                        currentIndex = (currentIndex + 1) % data.statements.length;
+                    } else {
+                        currentIndex = (currentIndex - 1 + data.statements.length) % data.statements.length;
+                    }
+
+                    // Add the new statement
+                    const newDiv = document.createElement('div');
+                    newDiv.className = 'statement';
+                    newDiv.textContent = data.statements[currentIndex];
+                    statementsContainer.appendChild(newDiv);
+
+                    setTimeout(() => {
+                        isTransitioning = false;
+                    }, 50);
+                }, 100);
+
+                statementsContainer.addEventListener('wheel', handleScroll);
+            } else {
+                const div = document.createElement('div');
+                div.className = 'statement';
+                div.textContent = 'No statement found.';
+                statementsContainer.appendChild(div);
+            }
+        });       
+    });
+</script>

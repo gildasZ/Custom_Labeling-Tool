@@ -1,0 +1,158 @@
+
+<!-- partials/Bodypart/_bodypart_dropdown.html -->
+<style>
+    .lead-selection {
+        position: absolute; /* Positioned relative to .graph_display-area */
+        top: 3px; /* Spacing from the top */
+        left: 3px; /* Spacing from the left */
+        display: flex; /* Aligns children in a row */
+        align-items: center; /* Centers items vertically */
+        height: 35px;
+        background-color: #505050;
+        box-sizing: border-box;
+        border: 1px solid #067794;
+        padding: 5px;
+        cursor: default;
+        border-radius: 10px; /* Rounded corners, adjust radius as needed */
+        z-index: 10; /* Ensure it sits on top of other content */
+    }
+
+    .selection-field {
+        align-items: center;
+        background-color: #505050;
+        color: white;
+        box-sizing: border-box;
+        border: 1px solid #067794;
+        padding: 5px;
+        cursor: default;
+        width: 105px; 
+        border-radius: 10px; 
+        font-size: 14px; 
+        font-weight: bold;
+    }
+
+    .dropdown {
+        position: relative; /* Needed to properly position the dropdown menu */
+        margin-left: 5px; /* Space between the label and dropdown */
+        border: 1px solid #067794;
+        background-color: #505050;
+        color: white;
+        padding: 5px;
+        cursor: pointer;
+        width: 70px; /* Example width, adjust as needed */
+        border-radius: 10px; /* Rounded corners, adjust radius as needed */
+        font-size: 16px;
+        font-weight: bold;
+        transition: transform 0.3s ease; /* Smooth transition for transform */
+    }
+
+    .dropdown:hover {
+        transform: scale(1.1); /* Slightly enlarge the button on hover */
+        background-color: #ffffff;
+        color: rgb(8, 8, 8);
+        font-size: 18px;
+        font-weight: bold;
+        box-sizing: border-box;
+    }
+
+    .dropdown:active {
+        transform: scale(0.9); /* Slightly reduce the size on click */
+        background-color: #ffffff; /* Change to a different color on click */
+        font-size: 20px; /* Increase font size for visibility */
+        font-weight: bold;
+    }
+
+    .dropdown-menu {
+        display: none; /* Initially hidden */
+        position: absolute;
+        top: calc(100% + 0px); /* Align top of menu just below the bottom of dropdown */
+        left: 120px; /* Adjust left positioning to align with the dropdown button */
+        width: 70px; /* Set the width to match the dropdown button */
+        background-color: #93ad62;
+        border-radius: 10px;
+        box-shadow: 0px 8px 16px 0px rgba(255,0,0,1);
+        z-index: 15; /* Ensure it sits on top of other content */
+        transition: transform 0.3s ease;
+    }
+
+    .dropdown-item {
+        padding: 12px 16px;
+        text-decoration: none;
+        display: flex; /* Make dropdown-item a flex container */
+        align-items: center; /* Center content vertically */
+        justify-content: center; /* Center content horizontally */
+        color: white;
+        font-size: 16px;
+    }
+
+    .dropdown-item:hover {  
+        cursor: pointer;
+        transform: scale(1.25); /* Slightly enlarge the button on hover */
+        color: rgb(13, 13, 14);
+        font-size: 20px;
+        font-weight: bold;
+        background-color: #86d9e4;
+        border-radius: 10px;
+        border: 1px solid #ff3300;
+        padding: 0px;
+        transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    .dropdown-item:active {
+        transform: scale(0.9); /* Slightly reduce the size on click */
+    }
+</style>
+
+<div class="lead-selection" id="leadDropdown"> 
+    <div class="selection-field">Choose a Lead: </div>
+    <div class="dropdown">▼</div>
+    <div class="dropdown-menu"></div> 
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropdown = document.querySelector('.dropdown');
+        const menu = document.querySelector('.dropdown-menu');
+
+        dropdown.addEventListener('click', function(event) {
+            event.stopPropagation(); // Prevent clicks from propagating
+            // Toggle the display based on its current state
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        // Hide the menu when clicking outside it
+        document.addEventListener('click', function() {
+            menu.style.display = 'none';
+        });
+
+        // Populate the menu when 'dataReceived' event is dispatched
+        document.addEventListener('dataReceived', function(event) {
+            const channels = event.detail.channels;
+            populateDropdown(channels, menu);
+            dropdown.textContent = '▼'; // Reset the dropdown text to default
+        });
+    });
+
+    function populateDropdown(channels, menu) {
+        menu.innerHTML = ''; // Clear existing items
+        channels.forEach(channel => {
+            const item = document.createElement('div');
+            item.textContent = channel;
+            item.classList.add('dropdown-item');
+            item.onclick = function(event) {
+                event.stopPropagation(); // Prevent this click from closing the menu
+                selectChannel(channel);
+                menu.style.display = 'none'; // Hide the menu after selection
+            };
+            menu.appendChild(item);
+        });
+    }
+
+    function selectChannel(channel) {
+        console.log('Selected Channel:', channel);
+        document.dispatchEvent(new CustomEvent('channelSelected', { detail: { channel: channel }}));
+
+        const dropdown = document.querySelector('.dropdown');
+        dropdown.textContent = channel + ' ▼'; // Update displayed text
+    }
+</script>

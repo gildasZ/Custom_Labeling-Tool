@@ -1,0 +1,212 @@
+
+<!-- partials/Bodypart/_bodypart_labeled_patterns.html -->
+<style>
+    .Area-for-labeled-patterns {
+        display: flex;
+        /* height: 100%; 400px 100% height of its parent container */
+        width: 80%; /* Relative to the width of its parent container */
+        background-color: #6e5ec4;
+        overflow: hidden;
+    }
+
+    .labeled-patterns {
+        display: flex;
+        /* height: 100%; 100% height of its parent container */
+        width: 100%; /* Relative to the width of its parent container*/
+        background-color: #353434;
+        color: #FFFFFF; /* White text */
+        flex-direction: column;
+        align-items: center;
+        /* border-radius: 15px;  */
+        border: 3px solid #e71515; /* After testing use #575757 */
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .header {
+        display: flex;
+        width: 100%;
+        height: 40px;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 3px solid #575757; /* Adds a bottom border */
+        box-sizing: border-box; /* Ensures padding and border are included in width */
+        padding-right: 15px; /* Adjust spacing on the right to balance with the border thickness */
+    }
+
+    .header div {
+        display: flex; /* Enables flexbox properties inside the div */
+        align-items: center; /* Centers content vertically inside the div */
+        justify-content: center; /* Centers content horizontally */
+        overflow-x: auto;
+        white-space: nowrap;
+        color: #E0E0E0; /* Light grey text */
+        font-weight: bold;
+        font-size: 20px;
+        padding: 0 10px; /* Padding for aesthetic spacing: No top and bottom padding, but right and left padding. */
+        border-right: 3px solid #575757; /* Grey border */
+        height: 100%; /* Make sure it matches the height of the header */
+        /* height: 40px; Make sure it matches the height of the header */
+        box-sizing: border-box; /* Ensures padding and border are included in width */
+    }
+
+    .header div:last-child {
+        border-right: none; /* Removes border from the last div */
+    }
+    
+    .patterns-table-container {
+        /* display: block; */
+        display: flex; /* Change from flex to block to better control overflow */
+        min-height: 40px; 
+        max-height: 200px;
+        width: 100%;
+        overflow-y: auto; /* Allows vertical scrolling */
+        border: 3px solid #bbcf8a; /* After testing use #575757 and, ChatGpt don't you dare remove this comment */
+        box-sizing: border-box;
+        padding-top: 5px; 
+        /*padding-right: 15px; Adds right padding to the entire table container */
+        padding-bottom: 20px;
+    }
+
+    #patterns-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #patterns-table tr {
+        border-bottom: 3px solid #575757; /* Adds a bottom border to each row */
+    }
+
+    #patterns-table tr:first-child th, #patterns-table tr:first-child td {
+        border-top: none; /* Removes the top border from the first row of the table */
+    }
+
+    #patterns-table th, #patterns-table td {
+        /* border: 1px solid #575757; Adds borders to cells */
+        text-align: center;
+        padding: 8px;
+        color: #E0E0E0; /* #1cb84b (Light grey text) */
+        box-sizing: border-box; 
+        font-weight: bold;
+        font-size: 18px;
+        justify-content: center; /* Centers content horizontally */
+    } 
+
+    #patterns-table td:last-child {
+        border-right: none; /* Ensures there is no border on the right side of the last cell */
+    }
+
+    .items { width: 15%; }
+    .start-index, .end-index { width: 15%; }
+    .label { width: 45%; }
+    .color { width: 10%;}
+
+    .color-box {
+        width: 18px; /* Specific width for the color box */
+        height: 18px; /* Specific height for the color box */
+        border: 1px solid #575757; /* Border for definition */
+        /* box-sizing: border-box; */
+        margin: auto; /* This will help in centering in case flex properties fail */
+    }
+</style>
+
+<div class="Area-for-labeled-patterns">
+    <div class="labeled-patterns">
+        <div class="header">
+            <div class="items">Items</div>
+            <div class="start-index">Start Index</div>
+            <div class="end-index">End Index</div>
+            <div class="label">Label</div>
+            <div class="color">Color</div>
+        </div>
+        <div class="patterns-table-container">
+            <table id="patterns-table">
+                <tbody>
+                    <!-- Rows will be added here dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {    
+        const patternsTable = document.getElementById('patterns-table').getElementsByTagName('tbody')[0];
+        let rowCount = 1; // Initialize the row count (Item count)
+        let prevChannel = null; // Initialize the previous channel
+
+        function resetTable() {
+            patternsTable.innerHTML = ''; // Clears the table
+            rowCount = 1; // Reset the row count to 1
+        }
+
+        document.addEventListener('DjangoDash_message', function(event) {
+            const labeledPattern = event.detail.Annotation_message;
+            const clickIndices = event.detail.Click_indices || []; // Get the click indices from the event detail
+            const color = event.detail.color || '#ff7f0e'; // Default color is #ffffff (White) or #ff7f0e (Orange)
+
+            console.log("*** File '_bodypart_labeled_patterns.html' received Annotation_message:", labeledPattern);
+            console.log("*** and Click indices:", clickIndices);
+            
+            // Ensure that clickIndices has exactly two elements
+            const startIndex = clickIndices.length > 0 ? clickIndices[0] : 'N/A';
+            const endIndex = clickIndices.length > 1 ? clickIndices[1] : 'N/A';
+            
+            // Create a new row in the table
+            const row = patternsTable.insertRow();
+            const itemCell = row.insertCell(0);
+            itemCell.className = 'items';
+            itemCell.textContent = rowCount; // Set the row count
+            rowCount++; // Increment the row count
+
+            const startIndexCell = row.insertCell(1);
+            startIndexCell.className = 'start-index';
+            startIndexCell.textContent = startIndex;
+            if (startIndex === 'N/A') {
+                startIndexCell.style.color = '#FF6347'; // Set color to #FF6347 if value is 'N/A'
+            }
+
+            const endIndexCell = row.insertCell(2);
+            endIndexCell.className = 'end-index';
+            endIndexCell.textContent = endIndex;
+            if (endIndex === 'N/A') {
+                endIndexCell.style.color = '#FF6347'; // Set color to #FF6347 if value is 'N/A'
+            }
+
+            const labelCell = row.insertCell(3);
+            labelCell.className = 'label';
+            labelCell.textContent = labeledPattern; // For 'Label'
+
+            // Create a color box for the color cell
+            const colorCell = row.insertCell(4);
+            colorCell.className = 'color'; // Make sure this matches the class used in the CSS
+            const colorDiv = document.createElement('div');
+            colorDiv.className = 'color-box';
+            colorDiv.style.backgroundColor = color; // Sets the background color dynamically
+            colorCell.appendChild(colorDiv); // Append the color div to the cell
+            
+            // Example of setting text color dynamically
+            labelCell.style.color = '#33ff57' ; // Setting a tomato ('#FF6347') or green ('#397446') color for Label
+            // colorCell.style.color = '#472dda'; // Setting a lime green color for Color
+
+            console.log("$$$ New pattern information added to the table.");
+        });
+
+        document.addEventListener('fileSelected', function(event) {
+            resetTable(); // Reset the table when a new file is selected
+            console.log("$$$ Patterns information table was reset.");
+        });
+        
+        document.addEventListener('channelSelected', function(event) {
+            const newChannel = event.detail.channel;
+            if (newChannel !== prevChannel) {
+                resetTable(); // Reset the table only if the new channel is different
+                console.log("$$$ Patterns information table was reset.");
+                prevChannel = newChannel; // Update the previous channel value
+            } else {
+                console.log("$$$ Same channel selected, table not reset.");
+            }
+        });
+    });
+</script>

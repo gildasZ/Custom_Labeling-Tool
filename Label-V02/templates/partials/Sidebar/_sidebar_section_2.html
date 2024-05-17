@@ -1,0 +1,63 @@
+
+<!-- Section 2: For folder selection using webkitdirectory -->
+<style>
+    .section2 {
+        padding: 10px;
+        height: 50px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center; /* Center text vertically */
+        justify-content: center; /* Center text horizontally */
+        border-bottom: 1px solid grey; /* Styling for the section divider */
+    }
+
+    .button {
+        width: calc(100% - 20px); /* Adjust width to account for padding */
+        height: 30px; /* Set a fixed height for the button */
+        display: flex; /* Use flexbox to center text inside the button */
+        align-items: center; /* Center text vertically */
+        justify-content: center; /* Center text horizontally */
+        background-color: #555;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.2s;
+    }
+
+    .button:hover {
+        background-color: #666666; /* Slightly different shade for better visibility */
+        cursor: pointer;
+    }
+
+    .button:active {
+        transform: scale(0.98);
+        background-color: #444444; /* Adjust for a darker active state */
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    // Function to handle directory selection and process files
+    function handleDirectorySelection(event) {
+        const files = event.target.files; // Get the list of files
+        const contents = Array.from(files).map(file => ({
+            name: file.name,
+            path: file.webkitRelativePath,
+            type: file.type
+        }));
+
+        // Dispatch a custom event with the file details
+        document.dispatchEvent(new CustomEvent('directorySelected', { detail: contents }));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const directoryInput = document.getElementById('directoryInput');
+        directoryInput.addEventListener('change', handleDirectorySelection);
+    });
+</script>
+
+<div class="section2">
+    <input type="file" id="directoryInput" webkitdirectory directory multiple style="display: none;">
+    <label for="directoryInput" class="button">Select your directory!</label>
+</div>

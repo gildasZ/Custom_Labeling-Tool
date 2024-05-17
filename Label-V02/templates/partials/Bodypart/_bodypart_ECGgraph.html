@@ -1,0 +1,95 @@
+
+<!-- partials/Bodypart/_bodypart_ECGgraph.html -->
+{% load static %} <!-- Make sure to load the static files -->
+{% load plotly_dash %}    
+{% plotly_message_pipe %}
+
+<style>
+    .graph_display-area {
+        position: relative; /* Establishes a new positioning context */
+        height: 100%;
+        width: 100%; 
+        background-color: #2976c4;
+        display: flex;
+        overflow: hidden; /* Prevents internal content from overflowing */
+        z-index: 2;
+    }
+
+    .graph-container {
+        /* flex-grow: 1; Takes available space */
+        width: 100%;
+        height: 100%;
+        /* max-height: 100%;  Ensures it does not expand vertically beyond its parent */
+        /* display: block; Block display to fill the area */
+        overflow: hidden; /* Prevents internal content from overflowing */
+        color: rgb(214, 61, 61); 
+        font-size: 16px;
+        background-color: #27293d; /* #353434 (light dark) or #bac429 (Light yellow) or #00008B (Dark blue)*/
+        /* padding: 0; */
+        align-items: center;
+        justify-content: center; 
+    }
+</style>
+
+<div class="graph_display-area">
+    <div class="graph-container">
+        
+        {% block content %}
+            {% plotly_app name='Display_ECG_Graph' ratio=0.30 %} 
+        {% endblock %}
+    </div>
+    <!-- Include the dropdown partial -->
+    {% include 'partials/Bodypart/_bodypart_dropdown.html' %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/process-xml/'); // Establish WebSocket connection
+        let absoluteFilePath = null; // Variable to hold the full path until the channel is selected
+
+        socket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log("@@@@Received Parsed data from Django:", data);  // Log parsed data to verify structure and content
+            
+            if (data.type === 'ecgData') {
+                console.log("***Client received ECG data from Django:", data); // Debugging: log received data
+                // Dispatch the event with data for other components to use
+                document.dispatchEvent(new CustomEvent('dataReceived', { detail: data }));
+            } else if (data.type === 'DjangoDash_message') {
+                console.log("***Client received DjangoDash_message data from Django:", data); // Debugging: log received data
+                // Log the annotation and click indices separately
+                console.log("Annotation message:", data.Annotation_message);
+                console.log("Click indices:", data.Click_indices);
+                // Dispatch the event with data for other components to use
+                document.dispatchEvent(new CustomEvent('DjangoDash_message', { detail: data }));
+            }
+        }
+
+        document.addEventListener('fileSelected', function(event) {
+            absoluteFilePath = event.detail.filePath; // Store the full path
+            // Prepare the data to send with WebSocket
+            var postData = {
+                type: 'processXML', // Specific type for this combined data
+                filePath: absoluteFilePath
+            };
+            // Send the data to the server via WebSocket
+            socket.send(JSON.stringify(postData));
+            console.log("Client sent the 'full file path' to Django for processing:", absoluteFilePath); // Debugging: log file path being sent
+        });
+
+        document.addEventListener('channelSelected', function(event) {
+            var selectedChannel = event.detail.channel;
+            // Prepare the data to send with WebSocket
+            var postData = {
+                type: 'DashDisplayWaveform', // Specific type for this combined data
+                fullFilePath: absoluteFilePath,
+                channel: selectedChannel
+            };
+            // Send the data to the server via WebSocket
+            socket.send(JSON.stringify(postData));
+            console.log("Client sent the 'full file path' and the 'selected channel' to Django:"); // Debugging: log received data or event.data?
+            console.log(absoluteFilePath);
+            console.log(selectedChannel);
+        });
+    });
+</script>

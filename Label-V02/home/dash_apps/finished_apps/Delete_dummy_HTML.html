@@ -1,0 +1,55 @@
+
+
+<!-- 'home/templates/home/welcome.html' -->
+{% extends 'base.html' %}
+{% load static %} <!-- Make sure to load the static files -->
+{% load plotly_dash %}    
+{% plotly_message_pipe %}
+
+
+{% block content %}
+    <div class="{% plotly_class name='SimpleExample' %} card" style="height: 100%; width: 100%">
+        {% plotly_app name="SimpleExample" ratio=0.65 %}
+        {% plotly_app name='Display_ECG_Graph' ratio=0.65 %}    
+    </div>
+    <br>
+    {{ plot1 | safe }}
+
+{% endblock %}
+
+
+
+<style>
+    .dummy-container {
+        width: 100%;
+        height: 100%; /* This ensures the div takes up all available space */
+        overflow: auto; /* Allows this div to scroll if content is too large */
+        color: #58a1e6; 
+        background-color: #e4451e;
+        font-size: 16px;
+        color: #4fa1ee;
+        color: #4fa1ee;
+        color: #ff5733;
+        color: #33ff57;
+        color: #1f77b4;
+        color: #ffffff;
+        color: rgba(0,0,0,0);
+        color: #27293d;
+        color: #ff7f0e;
+        color: #397446;
+    }
+
+
+    .dummy-2-container {
+        width: 100%;
+        height: 100%; /* This ensures the div takes up all available space */
+        overflow: auto; /* Allows this div to scroll if content is too large */
+        color: #ffffff; 
+        background-color: #1a2d46;
+        color: rgba(0,0,0,0);
+        color: #27293d;
+        font-size: 16px;
+    }
+
+
+</style>
