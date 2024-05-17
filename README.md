@@ -39,3 +39,8 @@ python manage.py runserver
  ```
 
 You will see the following line in the terminal, indicating the server is running:
+
+```bash
+Starting ASGI/Daphne version 4.1.2 development server at http://127.0.0.1:8000/
+ ```
+
