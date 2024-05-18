@@ -79,6 +79,7 @@ Before running the WebApp, you need to set up your environment:
 Once the setup is complete, you can run the development server:
 ```bash
 python manage.py runserver
+ ```
 
 ## Running the Application
 
