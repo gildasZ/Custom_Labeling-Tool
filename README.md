@@ -36,7 +36,7 @@ Before running the WebApp, you need to set up your environment:
    **Option 1: PostgreSQL**
    - Ensure the default database configuration in `settings.py` is commented out.
    - Create a PostgreSQL database named `db_label_v02`.
-   - Update the database configuration in `settings.py`:
+   - Update the database configuration in `settings.py` (look for the following in the file):
    
     ```python
     DATABASES = {
@@ -58,7 +58,7 @@ Before running the WebApp, you need to set up your environment:
 
    **Option 2: Default SQLite**
    - Ensure the PostgreSQL database configuration in `settings.py` is commented out.
-   - No additional setup is required. Ensure the default database configuration in `settings.py` is uncommented:
+   - No additional setup is required. Ensure the default database configuration in `settings.py` is uncommented (look for the following in the file):
 
     ```python
     DATABASES = {
