@@ -30,6 +30,56 @@ Before running the WebApp, you need to set up your environment:
      pipenv install -r requirements.txt
      ```
 
+4. **Database Setup:**
+   You have two options for setting up the database: using PostgreSQL or the default SQLite.
+
+   **Option 1: PostgreSQL**
+   - Ensure the default database configuration in `settings.py` is commented out.
+   - Create a PostgreSQL database named `db_label_v02`.
+   - Update the database configuration in `settings.py`:
+   
+    ```python
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'db_label_v02',
+            'USER': 'postgres',
+            'PASSWORD': '12345',
+            'HOST': 'localhost',  # It is marked as 'Server' in SQL Shell
+        }
+    }
+    ```
+
+   - Run migrations to set up the database schema:
+     ```bash
+     python manage.py makemigrations
+     python manage.py migrate
+     ```
+
+   **Option 2: Default SQLite**
+   - Ensure the PostgreSQL database configuration in `settings.py` is commented out.
+   - No additional setup is required. Ensure the default database configuration in `settings.py` is uncommented:
+
+    ```python
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+    ```
+
+   - Run migrations to set up the database schema:
+     ```bash
+     python manage.py makemigrations
+     python manage.py migrate
+     ```
+
+## Running the WebApp
+Once the setup is complete, you can run the development server:
+```bash
+python manage.py runserver
+
 ## Running the Application
 
 To run the application, execute the following command:
