@@ -75,12 +75,6 @@ Before running the WebApp, you need to set up your environment:
      python manage.py migrate
      ```
 
-## Running the WebApp
-Once the setup is complete, you can run the development server:
-```bash
-python manage.py runserver
- ```
-
 ## Running the Application
 
 To run the application, execute the following command:
