@@ -55,6 +55,11 @@ Before running the WebApp, you need to set up your environment:
      python manage.py makemigrations
      python manage.py migrate
      ```
+     
+   - Collect static files:
+     ```bash
+     python manage.py collectstatic
+     ```
 
    **Option 2: Default SQLite**
    - Ensure the PostgreSQL database configuration in `settings.py` is commented out.
