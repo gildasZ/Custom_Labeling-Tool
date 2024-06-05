@@ -20,7 +20,7 @@ Before running the WebApp, you need to set up your environment:
    - Create a new virtual environment in the `Label_V02` project folder.
    - Activate the virtual environment. If you're using pipenv, the commands are:
      ```bash
-     cd Label_V02  # Navigate into the project folder
+     cd Label-V02  # Navigate into the project folder
      pipenv shell  # Activate the virtual environment
      ```
 
