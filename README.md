@@ -74,6 +74,11 @@ Before running the WebApp, you need to set up your environment:
      python manage.py makemigrations
      python manage.py migrate
      ```
+     
+   - Collect static files:
+     ```bash
+     python manage.py collectstatic
+     ```
 
 ## Running the Application
 
