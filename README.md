@@ -69,18 +69,18 @@ Before running the WebApp, you need to set up your environment:
    - Ensure the default database configuration in `settings.py` is commented out.
    - Create a PostgreSQL database named `db_label_v02`.
    - Update the database configuration in `settings.py` (look for the following in the file):
-   
-    ```python
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'db_label_v02',
-            'USER': 'postgres',
-            'PASSWORD': '12345',
-            'HOST': 'localhost',  # It is marked as 'Server' in SQL Shell
-        }
-    }
-    ```
+
+     ```python
+     DATABASES = {
+         'default': {
+             'ENGINE': 'django.db.backends.postgresql',
+             'NAME': 'db_label_v02',
+             'USER': 'postgres',
+             'PASSWORD': '12345',
+             'HOST': 'localhost',  # It is marked as 'Server' in SQL Shell
+         }
+
+     ```
 
    - Run migrations to set up the database schema:
      ```bash
