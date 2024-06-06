@@ -31,8 +31,14 @@ Before running the WebApp, you need to set up your environment:
    
    ```sh
    redis-server
+   ```
+
+   Then check if you get `Pong` when you run these following commands in your terminal or command prompt:
+   
+   ```sh
    redis-cli
    ping
+   ```
 
 3. **Setting the Base File Path:**
    - Navigate to `settings.py` in the `label_V02` folder within the `Label_V02` project directory.
