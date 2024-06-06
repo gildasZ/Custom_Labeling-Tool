@@ -13,25 +13,26 @@ Before running the WebApp, you need to set up your environment:
    To install Redis on Windows, you can follow these steps:
    
    **Option 1: Install via MSI Executable in this repository**
-   ***Option 1: Install via MSI Executable in this repository***
    
-   1. Locate the Redis executable `Redis-x64-5.0.14.1.msi` from this repository.
-   2. Run the executable and follow the installation prompts.
-   3. During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
-   4. Keep the rest as default and follow the remaining installation prompts.
+   - Locate the Redis executable `Redis-x64-5.0.14.1.msi` from this repository.
+   - Run the executable and follow the installation prompts.
+   - During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
+   - Keep the rest as default and follow the remaining installation prompts.
    
    **Option 2: Download the Latest Release**
    
-   1. Visit the [Redis Releases](https://github.com/tporadowski/redis/releases) page.
-   2. Download the latest release or the same version.
-   3. Run the installer and follow the installation instructions.
-   4. During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
-   5. Keep the rest as default and follow the remaining installation prompts.
+   - Visit the [Redis Releases](https://github.com/tporadowski/redis/releases) page.
+   - Download the latest release or the same version.
+   - Run the installer and follow the installation instructions.
+   - During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
+   - Keep the rest as default and follow the remaining installation prompts.
    
    Once installed, ensure Redis is running properly by executing the following command in your terminal or command prompt:
    
    ```sh
    redis-server
+   redis-cli
+   ping
 
 3. **Setting the Base File Path:**
    - Navigate to `settings.py` in the `label_V02` folder within the `Label_V02` project directory.
