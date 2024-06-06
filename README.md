@@ -8,7 +8,31 @@ This ongoing project is a custom labeling tool based on Django-Plotly-Dash, spec
 ### Prerequisites
 Before running the WebApp, you need to set up your environment:
 
-1. **Setting the Base File Path:**
+1. **Redis Installation (Windows)**
+
+   To install Redis on Windows, you can follow these steps:
+   
+   **Option 1: Install via MSI Executable in this repository**
+   
+   1. Locate the Redis executable `Redis-x64-5.0.14.1.msi` from this repository.
+   2. Run the executable and follow the installation prompts.
+   3. During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
+   4. Keep the rest as default and follow the remaining installation prompts.
+   
+   **Option 2: Download the Latest Release**
+   
+   1. Visit the [Redis Releases](https://github.com/tporadowski/redis/releases) page.
+   2. Download the latest release or the same version.
+   3. Run the installer and follow the installation instructions.
+   4. During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
+   5. Keep the rest as default and follow the remaining installation prompts.
+   
+   Once installed, ensure Redis is running properly by executing the following command in your terminal or command prompt:
+   
+   ```sh
+   redis-server
+
+2. **Setting the Base File Path:**
    - Navigate to `settings.py` in the `label_V02` folder within the `Label_V02` project directory.
    - Update the `BASE_FILE_PATH` variable with the root directory path where you've placed the `Testing_Folder_Filtered`. Make sure this path does not include 'Testing_Folder_Filtered' itself and does not end with a `/` or `\`.
 
@@ -16,7 +40,7 @@ Before running the WebApp, you need to set up your environment:
     BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"INSERT YOUR PATH HERE")
     ```
 
-2. **Virtual Environment:**
+3. **Virtual Environment:**
    - Create a new virtual environment in the `Label_V02` project folder.
    - Activate the virtual environment. If you're using pipenv, the commands are:
      ```bash
@@ -24,13 +48,13 @@ Before running the WebApp, you need to set up your environment:
      pipenv shell  # Activate the virtual environment
      ```
 
-3. **Dependencies:**
+4. **Dependencies:**
    - Install the required packages from `requirements.txt` using pipenv:
      ```bash
      pipenv install -r requirements.txt
      ```
 
-4. **Database Setup:**
+5. **Database Setup:**
    You have two options for setting up the database: using PostgreSQL or the default SQLite.
 
    **Option 1: PostgreSQL**
