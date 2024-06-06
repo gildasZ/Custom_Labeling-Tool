@@ -82,6 +82,12 @@
     let lastClickedFile = null; // Stores the last clicked file element for toggling highlight
     let currentFilePath = ""; // Stores the current file path globally
 
+    // Escape backslashes in the base file path then replace '\' with '/'
+    let rawBasePath = "{{ base_file_path|escapejs }}";
+    console.log("Raw base file path:", rawBasePath);
+    let basePath = rawBasePath.replace(/\\/g, '/');
+    console.log("Processed base file path:", basePath);
+    
     document.addEventListener('directorySelected', function(event) {
         const files = event.detail;
         const directoryData = buildDirectoryStructure(files);
@@ -186,7 +192,7 @@
 
                 li.classList.add('highlight');
                 lastClickedFile = li;
-                currentFilePath = "{{ base_file_path }}" + '/' + data[key]._file.path; // Store full path
+                currentFilePath = basePath + '/' + data[key]._file.path; // Store full path
                 // Dispatch custom event with the file path
                 console.log("Dispatching the selected 'full file path':", currentFilePath); // Log the path for further work
                 document.dispatchEvent(new CustomEvent('fileSelected', { detail: { filePath: currentFilePath, fileName: key } }));

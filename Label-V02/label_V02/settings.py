@@ -95,25 +95,37 @@ WSGI_APPLICATION = 'label_V02.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# This was the default database being used
-"""
+
+''' 
+This was the default database being used. 
+Don't forget to run these 2 oommand lines if you change the database:
+     python manage.py makemigrations
+     python manage.py migrate
+'''
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-"""
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'db_label_v02',
-        'USER': 'postgres',
-        'PASSWORD': '12345',
-        'HOST': 'localhost', # It is marked as 'Server in SQL Shell
-    }
-}
+''' 
+Here is a PostgreSQL database configuration.
+Don't forget to run these 2 oommand lines if you change the database:
+     python manage.py makemigrations
+     python manage.py migrate
+'''
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'db_label_v02',
+#         'USER': 'postgres',
+#         'PASSWORD': '12345',
+#         'HOST': 'localhost', # It is marked as 'Server in SQL Shell
+#     }
+# }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
