@@ -14,8 +14,7 @@ from pathlib import Path
 import os
 
 # Define a BASE_FILE_PATH that points to the directory where your files (XML files) are stored
-# BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"C:/Users/gilda/OneDrive/Documents/_NYCU/Master's Thesis/LABORATORY/Labeling Tool")
-BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"C:\Users\gilda\OneDrive\Documents\_NYCU\Master's Thesis\LABORATORY\Labeling Tool")
+BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r" INSERT THE PATH OF THE ROOT DIRECTORY WHERE YOUR PLACED 'Testing_Folder_Filtered' ('Testing_Folder_Filtered' SHould not be included in the path and the path must not end with / or \) ")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
