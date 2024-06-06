@@ -10,35 +10,35 @@ Before running the WebApp, you need to set up your environment:
 
 1. **Redis Installation (Windows)**
 
-   To install Redis on Windows, you can follow these steps:
+      To install Redis on Windows, you can follow these steps:
+      
+      **Option 1: Install via MSI Executable in this repository**
+      
+      - Locate the Redis executable `Redis-x64-5.0.14.1.msi` from this repository.
+      - Run the executable and follow the installation prompts.
+      - During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
+      - Keep the rest as default and follow the remaining installation prompts.
+      
+      **Option 2: Download the Latest Release**
+      
+      - Visit the [Redis Releases](https://github.com/tporadowski/redis/releases) page.
+      - Download the latest release or the same version.
+      - Run the installer and follow the installation instructions.
+      - During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
+      - Keep the rest as default and follow the remaining installation prompts.
+      
+      Once installed, ensure Redis is running properly by executing the following command in your terminal or command prompt:
+      
+      ```sh
+      redis-server
+      ```
    
-   **Option 1: Install via MSI Executable in this repository**
-   
-   - Locate the Redis executable `Redis-x64-5.0.14.1.msi` from this repository.
-   - Run the executable and follow the installation prompts.
-   - During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
-   - Keep the rest as default and follow the remaining installation prompts.
-   
-   **Option 2: Download the Latest Release**
-   
-   - Visit the [Redis Releases](https://github.com/tporadowski/redis/releases) page.
-   - Download the latest release or the same version.
-   - Run the installer and follow the installation instructions.
-   - During the installation process, check `Add the Redis installation folder to the PATH environment variable.`
-   - Keep the rest as default and follow the remaining installation prompts.
-   
-   Once installed, ensure Redis is running properly by executing the following command in your terminal or command prompt:
-   
-   ```sh
-   redis-server
-   ```
-
-   Then check if you get `PONG` when you run these following commands in your terminal or command prompt:
-   
-   ```sh
-   redis-cli
-   ping
-   ```
+      Then check if you get `PONG` when you run these following commands in your terminal or command prompt:
+      
+      ```sh
+      redis-cli
+      ping
+      ```
 
 2. **Setting the Base File Path:**
    - Navigate to `settings.py` in the `label_V02` folder within the `Label_V02` project directory.
