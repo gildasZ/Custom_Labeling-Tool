@@ -8,7 +8,7 @@ This ongoing project is a custom labeling tool based on Django-Plotly-Dash, spec
 ### Prerequisites
 Before running the WebApp, you need to set up your environment:
 
-1. **Redis Installation (Windows)**
+1. **Redis Installation (Windows)**<span style="color:blue;">Redis Installation (Windows)</span>
 
    To install Redis on Windows, you can follow these steps:
    
