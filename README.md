@@ -9,7 +9,7 @@ This ongoing project is a custom labeling tool based on Django-Plotly-Dash, spec
 Before running the WebApp, you need to set up your environment:
 
 1. **Redis Installation (Windows)**
-
+      
       To install Redis on Windows, you can follow these steps:
       
       **Option 1: Install via MSI Executable in this repository**
@@ -29,16 +29,16 @@ Before running the WebApp, you need to set up your environment:
       
       Once installed, ensure Redis is running properly by executing the following command in your terminal or command prompt:
       
-      ```sh
-      redis-server
-      ```
-   
+            ```sh
+            redis-server
+            ```
+      
       Then check if you get `PONG` when you run these following commands in your terminal or command prompt:
       
-      ```sh
-      redis-cli
-      ping
-      ```
+            ```sh
+            redis-cli
+            ping
+            ```
 
 2. **Setting the Base File Path:**
    - Navigate to `settings.py` in the `label_V02` folder within the `Label_V02` project directory.
