@@ -40,7 +40,7 @@ Before running the WebApp, you need to set up your environment:
    ping
    ```
 
-3. **Setting the Base File Path:**
+2. **Setting the Base File Path:**
    - Navigate to `settings.py` in the `label_V02` folder within the `Label_V02` project directory.
    - Update the `BASE_FILE_PATH` variable with the root directory path where you've placed the `Testing_Folder_Filtered`. Make sure this path does not include 'Testing_Folder_Filtered' itself and does not end with a `/` or `\`.
   
@@ -48,7 +48,7 @@ Before running the WebApp, you need to set up your environment:
      BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"INSERT YOUR PATH HERE")
      ```
 
-4. **Virtual Environment:**
+3. **Virtual Environment:**
    - Create a new virtual environment in the `Label_V02` project folder.
    - Activate the virtual environment. If you're using pipenv, the commands are:
      ```bash
@@ -56,13 +56,13 @@ Before running the WebApp, you need to set up your environment:
      pipenv shell  # Activate the virtual environment
      ```
 
-5. **Dependencies:**
+4. **Dependencies:**
    - Install the required packages from `requirements.txt` using pipenv:
      ```bash
      pipenv install -r requirements.txt
      ```
 
-6. **Database Setup:**
+5. **Database Setup:**
    You have two options for setting up the database: using PostgreSQL or the default SQLite.
 
    **Option 1: PostgreSQL**
