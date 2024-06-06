@@ -35,7 +35,7 @@ Before running the WebApp, you need to set up your environment:
       
       Then check if you get `PONG` when you run these following commands in your terminal or command prompt:
    
-      ```sh
+      ```bash
       redis-cli
       ping
       ```
