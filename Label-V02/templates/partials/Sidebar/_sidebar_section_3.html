@@ -78,16 +78,15 @@
 </div>
 
 <script>
-    let currentActiveFolder = {}; // Stores the last clicked folder's files
-    let lastClickedFile = null; // Stores the last clicked file element for toggling highlight
-    let currentFilePath = ""; // Stores the current file path globally
-
-    // Escape backslashes in the base file path then replace '\' with '/'
     let rawBasePath = "{{ base_file_path|escapejs }}";
     console.log("Raw base file path:", rawBasePath);
     let basePath = rawBasePath.replace(/\\/g, '/');
     console.log("Processed base file path:", basePath);
-    
+
+    let currentActiveFolder = {}; // Stores the last clicked folder's files
+    let lastClickedFile = null; // Stores the last clicked file element for toggling highlight
+    let currentFilePath = ""; // Stores the current file path globally
+
     document.addEventListener('directorySelected', function(event) {
         const files = event.detail;
         const directoryData = buildDirectoryStructure(files);
