@@ -13,7 +13,7 @@ Before running the WebApp, you need to set up your environment:
    To install Redis on Windows, you can follow these steps:
    
    **Option 1: Install via MSI Executable in this repository**
-   **Option 1: Install via MSI Executable in this repository**
+   ***Option 1: Install via MSI Executable in this repository***
    
    1. Locate the Redis executable `Redis-x64-5.0.14.1.msi` from this repository.
    2. Run the executable and follow the installation prompts.
