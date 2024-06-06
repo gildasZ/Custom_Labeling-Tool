@@ -33,7 +33,7 @@ Before running the WebApp, you need to set up your environment:
    redis-server
    ```
 
-   Then check if you get `Pong` when you run these following commands in your terminal or command prompt:
+   Then check if you get `PONG` when you run these following commands in your terminal or command prompt:
    
    ```sh
    redis-cli
@@ -43,10 +43,10 @@ Before running the WebApp, you need to set up your environment:
 3. **Setting the Base File Path:**
    - Navigate to `settings.py` in the `label_V02` folder within the `Label_V02` project directory.
    - Update the `BASE_FILE_PATH` variable with the root directory path where you've placed the `Testing_Folder_Filtered`. Make sure this path does not include 'Testing_Folder_Filtered' itself and does not end with a `/` or `\`.
-
-    ```python
-    BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"INSERT YOUR PATH HERE")
-    ```
+  
+     ```python
+     BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"INSERT YOUR PATH HERE")
+     ```
 
 4. **Virtual Environment:**
    - Create a new virtual environment in the `Label_V02` project folder.
