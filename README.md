@@ -29,7 +29,7 @@ Before running the WebApp, you need to set up your environment:
       
       Once installed, ensure Redis is running properly by executing the following command in your terminal or command prompt:
       
-      ```sh
+      ```bash
       redis-server
       ```
       
@@ -96,15 +96,14 @@ Before running the WebApp, you need to set up your environment:
    **Option 2: Default SQLite**
    - Ensure the PostgreSQL database configuration in `settings.py` is commented out.
    - No additional setup is required. Ensure the default database configuration in `settings.py` is uncommented (look for the following in the file):
-
-    ```python
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-    ```
+     ```python
+     DATABASES = {
+         'default': {
+             'ENGINE': 'django.db.backends.sqlite3',
+             'NAME': BASE_DIR / 'db.sqlite3',
+         }
+     }
+     ```
 
    - Run migrations to set up the database schema:
      ```bash
