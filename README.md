@@ -28,10 +28,10 @@ Before running the WebApp, you need to set up your environment:
       - Keep the rest as default and follow the remaining installation prompts.
       
       Once installed, ensure Redis is running properly by executing the following command in your terminal or command prompt:
-      
-            ```sh
-            redis-server
-            ```
+
+        ```sh
+        redis-server
+        ```
       
       Then check if you get `PONG` when you run these following commands in your terminal or command prompt:
       
