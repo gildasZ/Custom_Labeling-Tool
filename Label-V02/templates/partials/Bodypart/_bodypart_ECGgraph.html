@@ -57,11 +57,18 @@
                 document.dispatchEvent(new CustomEvent('dataReceived', { detail: data }));
             } else if (data.type === 'DjangoDash_message') {
                 console.log("***Client received DjangoDash_message data from Django:", data); // Debugging: log received data
-                // Log the annotation and click indices separately
+                // Log the annotation, click indices and item number separately
                 console.log("Annotation message:", data.Annotation_message);
                 console.log("Click indices:", data.Click_indices);
+                console.log("Item number:", data.Item_number);
                 // Dispatch the event with data for other components to use
                 document.dispatchEvent(new CustomEvent('DjangoDash_message', { detail: data }));
+            } else if (data.type === 'DjangoDash_retrieved_data_message') {
+                console.log("***Client received DjangoDash_retrieved_data_message data from Django:", data); // Debugging: log received data
+                // Log the retrieved data
+                console.log("Existing_Data:", data.Existing_Data);
+                // Dispatch the event with data for other components to use
+                document.dispatchEvent(new CustomEvent('DjangoDash_retrieved_data_message', { detail: data }));
             }
         }
 

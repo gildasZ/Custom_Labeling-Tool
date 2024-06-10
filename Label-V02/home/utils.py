@@ -5,11 +5,39 @@ import html
 import re
 import os
 import csv
+import logging
 from pathlib import Path
 from django.conf import settings  # Import Django settings
 
+# Setup logger
+logger = logging.getLogger('home')
 
-def add_annotation_to_csv(full_file_path, channels, selected_channel, annotation_data):
+def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channel=None, annotation_data=None, task_to_do=''):
+    """
+    Adds an annotation row to a CSV file, creating the file and necessary directories if they don't exist.
+    
+    Parameters:
+    - full_file_path (str): Full file path of the XML file.
+    - channels (list): List of all channels available in the XML file.
+    - selected_channel (str): The channel selected for the annotation.
+    - annotation_data (dict): The data to be added to the CSV file. Should contain 'Start Index', 'End Index', 'Label', and 'Color'.
+    - task_to_do (str): The task to perform: 'add' for addind data, 'retrieve' for retrieving existing values, 'remove' for removing data, 'reset' for resetting the CSV file.
+
+    Returns:
+    - list: A list of dictionaries containing the existing values for the selected channel, including the newly added element.
+    """
+
+    if task_to_do == 'add':
+        logger.info(f"Adding data to a CSV file\n")
+        add_annotation_to_csv(channels, full_file_path, selected_channel, annotation_data)
+    elif task_to_do == 'retrieve':
+        logger.info(f"Retrieving existing annotations from CSV file\n")
+        return retrieve_existing_annotations(full_file_path, selected_channel)
+    else:
+        logger.info(f"Specify a valid task_to_do.\n")
+        return []
+
+def add_annotation_to_csv(channels, full_file_path, selected_channel, annotation_data):
     """
     Adds an annotation row to a CSV file, creating the file and necessary directories if they don't exist.
     
@@ -20,84 +48,158 @@ def add_annotation_to_csv(full_file_path, channels, selected_channel, annotation
     - annotation_data (dict): The data to be added to the CSV file. Should contain 'Start Index', 'End Index', 'Label', and 'Color'.
     
     Returns:
-    - int: The item number for the added row.
+    - list: A list of dictionaries containing the existing values for the selected channel, including the newly added element.
     """
-    # Base path from settings
-    base_path = Path(settings.BASE_FILE_PATH)
-    # Ensure 'CSV_Annotations' directory exists
-    annotations_dir = base_path / 'CSV_Annotations'
-    annotations_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Derive relative path and create corresponding directories
-    relative_path = Path(full_file_path).relative_to(base_path).with_suffix('.csv')
-    print(f"\n\nrelative_path = {relative_path}\n\n") #######################################
-    csv_file_path = annotations_dir / relative_path
-    print(f"\n\ncsv_file_path = {csv_file_path}\n\n") #######################################
-    csv_file_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Initialize item number
-    item_number = 1
+    try:
+        # Base path from settings
+        base_path = Path(settings.BASE_FILE_PATH)
+        # Ensure 'CSV_Annotations' directory exists
+        annotations_dir = base_path / 'CSV_Annotations'
+        annotations_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Derive relative path and the subdirectory of the xml file
+        relative_path = Path(full_file_path).relative_to(base_path).with_suffix('.csv')
+        subdirectory = relative_path.parent
 
-    # Create and write to the CSV file
-    if not csv_file_path.exists():
-        with open(csv_file_path, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            # Write header row (single row)
-            header_row = []
-            for channel in channels:
-                header_row.extend([f'{channel} Items', f'{channel} Start Index', f'{channel} End Index', f'{channel} Label', f'{channel} Color'])
-            writer.writerow(header_row)
+        # Create 'Working_Folder' within the subdirectory
+        working_csv_file_path = annotations_dir / subdirectory / 'Working_Folder' / relative_path.name
+        working_csv_file_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"working_csv_file_path = {working_csv_file_path}\n")
 
-    else:
-        # If the file exists, determine the next item number
-        with open(csv_file_path, mode='r', newline='') as file:
-            reader = csv.reader(file)
-            headers = next(reader)  # Read header row
+        # Create 'Saving_Folder' within the subdirectory
+        saving_csv_file_path = annotations_dir / subdirectory / 'Saving_Folder' / relative_path.name
+        saving_csv_file_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"saving_csv_file_path = {saving_csv_file_path}\n")
+
+        # Create temporary file for manipulation 
+        temp_file_path = Path(working_csv_file_path).with_suffix('.tmp')
+        with open(temp_file_path, mode='w', newline='') as temp_file:
+            pass  # This ensures the file is truncated (emptied) if it exists
+        
+        # Initialize item number
+        item_number = 1
+
+        # Create and write to the CSV file
+        if not working_csv_file_path.exists():
+            with open(working_csv_file_path, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                # Write header row (single row)
+                header_row = []
+                for channel in channels:
+                    header_row.extend([f'{channel} Items', f'{channel} Start Index', f'{channel} End Index', f'{channel} Label', f'{channel} Color'])
+                writer.writerow(header_row)
+
+        # Open the working CSV file in read mode and the temporary file in write mode
+        with open(working_csv_file_path, mode='r', newline='') as csv_file, open(temp_file_path, mode='w', newline='') as temp_file:
+            reader = csv.reader(csv_file)
+            writer = csv.writer(temp_file)
+
+            headers = next(reader)  # Read the header row
+            writer.writerow(headers)  # Write the header to the temporary file
             item_col_index = headers.index(f'{selected_channel} Items')
-            for row in reader: # Iterate over data rows, the header row was already skipped by next(reader)
-                if row[item_col_index]:
-                    item_number = int(row[item_col_index]) + 1
 
-    # Prepare the row to add
-    row_data = [''] * len(headers) ###############################################
-    start_index = annotation_data.get('Start Index', '')
-    end_index = annotation_data.get('End Index', '')
-    label = annotation_data.get('Label', '')
-    color = annotation_data.get('Color', '')
-    
-    channel_start_index = headers.index(f'{selected_channel} Items')
-    row_data[channel_start_index] = item_number
-    row_data[channel_start_index + 1] = start_index
-    row_data[channel_start_index + 2] = end_index
-    row_data[channel_start_index + 3] = label
-    row_data[channel_start_index + 4] = color
+            row_found = False
 
-    # Append the row to the CSV file
-    with open(csv_file_path, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(row_data)
-    
-    return item_number
+            # Iterate through the non-empty rows after the headers row
+            for row in reader:
+                if not row_found and all(not row[headers.index(f'{selected_channel} {suffix}')] for suffix in ['Items', 'Start Index', 'End Index', 'Label', 'Color']):
+                    # Update only the columns related to the selected channel
+                    row[item_col_index] = item_number
+                    row[item_col_index + 1] = annotation_data.get('Start Index', '')
+                    row[item_col_index + 2] = annotation_data.get('End Index', '')
+                    row[item_col_index + 3] = annotation_data.get('Label', '')
+                    row[item_col_index + 4] = annotation_data.get('Color', '#d604a2')
+                    row_found = True # Mark that we've found and updated the row
+                else:
+                    if row[item_col_index]:
+                        item_number = int(row[item_col_index]) + 1
+                writer.writerow(row)
+            logger.info(f"Current item_number being added: {item_number}\n")
 
+            # If no row was updated (because it was already occupied or there were no data rows), append a new row
+            if not row_found:
+                row_data = [''] * len(headers)
+                row_data[item_col_index] = item_number
+                row_data[item_col_index + 1] = annotation_data.get('Start Index', '')
+                row_data[item_col_index + 2] = annotation_data.get('End Index', '')
+                row_data[item_col_index + 3] = annotation_data.get('Label', '')
+                row_data[item_col_index + 4] = annotation_data.get('Color', '#d604a2')
+                writer.writerow(row_data)
+
+        # Replace the working csv file with the temporary file. This will delete the temporary file.
+        os.replace(temp_file_path, working_csv_file_path)
+        logger.info(f"working CSV file was updated, and the temporary file was removed..\n")
+
+    except Exception as e:
+        logger.error(f"Error in handle_annotation_to_csv: {str(e)}\n")
+
+def retrieve_existing_annotations(full_file_path, selected_channel):
+    """
+    Retrieves existing annotations for the selected channel from a CSV file.
+
+    Parameters:
+    - full_file_path (str): Full file path of the XML file.
+    - selected_channel (str): The channel selected for the annotation.
+
+    Returns:
+    - list: A list of dictionaries containing the existing values for the selected channel.
+    """
+    try:
+        # Base path from settings
+        base_path = Path(settings.BASE_FILE_PATH)
+        # Ensure 'CSV_Annotations' directory exists
+        annotations_dir = base_path / 'CSV_Annotations'
+
+        # Derive relative path and the subdirectory of the xml file
+        relative_path = Path(full_file_path).relative_to(base_path).with_suffix('.csv')
+        subdirectory = relative_path.parent
+
+        # Path to the working CSV file
+        working_csv_file_path = annotations_dir / subdirectory / 'Working_Folder' / relative_path.name
+
+        # List to store existing values
+        existing_values = []
+
+        if working_csv_file_path.exists():
+            with open(working_csv_file_path, mode='r', newline='') as csv_file:
+                reader = csv.reader(csv_file)
+                headers = next(reader)  # Read the header row
+                item_col_index = headers.index(f'{selected_channel} Items')
+
+                # Iterate through the non-empty rows after the headers row
+                for row in reader:
+                    if row[item_col_index]:
+                        existing_values.append({
+                            'Item Number': row[item_col_index],
+                            'Start Index': row[item_col_index + 1],
+                            'End Index': row[item_col_index + 2],
+                            'Label': row[item_col_index + 3],
+                            'Color': row[item_col_index + 4],
+                        })
+        logger.info(f"Retrieved existing annotations for {selected_channel} from {working_csv_file_path}\n")
+        return existing_values
+    except Exception as e:
+        logger.error(f"Error in retrieve_existing_annotations: {str(e)}\n")
+        return []
 
 def process_xml_data(file_path): # Working with WebSocket 
     file_path = html.unescape(file_path)  # Decode HTML entities
     file_path = convert_path(file_path)
     try:
 
-        print("process_xml_data function returns: ")
+        logger.info("process_xml_data function returns: ")
         severity = extract_severity(file_path)
-        print("\nASGI Extracted severity:", severity, "\n")
+        logger.info(f"\nASGI Extracted severity: {severity}\n")
 
         channels = extract_channels(file_path)
-        print("ASGI Extracted channels:", channels, "\n")
+        logger.info(f"ASGI Extracted channels: {channels}\n")
 
         statements = extract_interpretation_statements(file_path)
-        print("ASGI Extracted statements:", statements, "\n")
+        logger.info(f"ASGI Extracted statements: {statements}\n")
 
         return {'severity': severity, 'channels': channels, 'statements': statements}
     except Exception as e:
-        print("Error processing XML file:", e)
+        logger.info(f"Error processing XML file: {e}")
         return {'error': str(e)}
 
 def extract_severity(xml_file_path):
@@ -118,7 +220,7 @@ def extract_severity(xml_file_path):
                 return clean_text(elem.text.strip()).upper() 
         return "" # Return empty string if no severity found in the entire document
     except Exception as e:
-        print(f"Error processing file {xml_file_path}: {e}")
+        logger.info(f"Error processing file {xml_file_path}: {e}")
         return ""
 
 def clean_text(text):
@@ -137,7 +239,7 @@ def extract_channels(file_path):
         for channel in root.findall('.//Channel'):
             channels.append(channel.text)
     except etree.ParseError as e:
-        print("XML parsing error:", e)  # Print parsing errors
+        logger.info(f"XML parsing error: {e}")  # Print parsing errors
         raise
     return channels
 
@@ -179,5 +281,5 @@ def extract_interpretation_statements(xml_file_path):
             return filtered_statements
         return []
     except Exception as e:
-        print(f"\nError processing file {xml_file_path}: {e}\n")
+        logger.info(f"\nError processing file {xml_file_path}: {e}\n")
         return []
