@@ -98,5 +98,18 @@
             console.log(absoluteFilePath);
             console.log(selectedChannel);
         });
+
+        document.addEventListener('buttonClick', function(event) {
+            var action_var = event.detail.action;
+            console.log("   'buttonClick' event received:", action_var);
+            // Prepare the data to send with WebSocket
+            var postData = {
+                type: 'Refresh_Save_Undo', // Specific type for this combined data
+                Action_var: action_var
+            };
+            // Send the data to the server via WebSocket
+            socket.send(JSON.stringify(postData));
+            console.log("   Client sent the 'Refresh or Save or Undo' action to Django for processing,      action:", action_var); // Debugging: log file path being sent
+        });
     });
 </script>
