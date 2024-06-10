@@ -324,6 +324,7 @@ def update_graph(file_path_and_channel_data, clicks, callback_context):
 
 # Function to plot waveform data using Plotly
 def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_values=None, click_data=None):
+    logger.info(f"plot_waveform function was called!\n")
     # Initialize figure with layout that supports animations
     fig = go.Figure(
         layout={
@@ -387,7 +388,9 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
         return previous_end_index
 
     if data:
+        logger.info(f"In plot_segments function, \n\t\t\tif data == True\n")
         if task_to_do == 'rebuild' and existing_values:
+            logger.info(f"In plot_segments function, \n\t\t\ttask_to_do == 'rebuild' and existing_values\n")
             previous_end_index = plot_segments(existing_values, data)
 
             # Plot the portion after the last segment if it exists
@@ -402,6 +405,7 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
                 ))
 
         else:
+            logger.info(f"In plot_segments function, \n\t\t\ttask_to_do != 'rebuild'\n")
             if existing_values:
                 previous_end_index = plot_segments(existing_values, data)
             else:
@@ -409,18 +413,34 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
             
             if click_data:
                 x1, x2 = sorted(click_data)
-                if x1 == previous_end_index:
-                    # Plot the clicked segment
-                    segment = data[x1:x2+1]
-                    x_values = list(range(x1, x2+1))
+                logger.info(f"In plot_segments function, \n\t\t\tif click_data = True ({click_data})\n")
+
+                if x1 > previous_end_index:
+                    logger.info(f"x1 > previous_end_index = {previous_end_index}\n")
+                    # Plot the portion before the current segment if it exists
+                    segment_before = data[previous_end_index:x1+1]
+                    x_values_before = list(range(previous_end_index, x1+1))
                     fig.add_trace(go.Scatter(
-                        x=x_values, 
-                        y=segment, 
-                        line=dict(color='green'),  # Highlight the new segment with green color
+                        x=x_values_before, 
+                        y=segment_before, 
+                        line=dict(color='#4fa1ee'),  # Default color for segments without specific color
                         mode='lines'
                     ))
-                    # Update the previous end index to the end of the clicked segment
-                    previous_end_index = x2
+                    logger.info(f"\n\nThe portion before the x1 index was updated.\n")
+
+                # Plot the clicked segment
+                segment = data[x1:x2+1]
+                x_values = list(range(x1, x2+1))
+                fig.add_trace(go.Scatter(
+                    x=x_values, 
+                    y=segment, 
+                    line=dict(color='green'),  # Highlight the new segment with green color
+                    mode='lines'
+                ))
+                logger.info(f"\n\nThe [x1, x2] segment from click_data was updated.\n\n")
+
+                # Update the previous end index to the end of the clicked segment
+                previous_end_index = x2
 
             # Plot the portion after the last segment if it exists
             if previous_end_index < len(data):
