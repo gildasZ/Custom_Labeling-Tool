@@ -54,7 +54,7 @@ app.layout = html.Div([
             label='All-Channels',          # Label used to identify relevant messages
             channel_name='Receive_Django_Message_Channel'), # channel_name='Channels_Extracted'), # Channel whose messages are to be examined
     dpd.Pipe(id='Button_Action',           # ID in callback
-            value = {'Action': None, 'Click_Order': None},
+            value = {'Action': None},
             label='This-Action',          # Label used to identify relevant messages
             channel_name='Receive_Django_Message_Channel'), # channel_name='Action_Requested') # Channel whose messages are to be examined
     dcc.Store(id='click-data', data= {'Indices': None, 'Manual': None}, storage_type='memory'),  # Store for click data
@@ -174,42 +174,41 @@ def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, enter_pressed, style,
         style['display'] = 'none'   # Hide modal
     return style
 
-# # Callback to update ButtonAction_Store store, consecutive same clicks of 'undo' or 'refresh' buttons.
-# @app.callback(
-#     [Output('Button_Action_Store', 'data')],
-#     [Input('Button_Action', 'value')],
-#     [State('click-data', 'data'),
-#      State('Button_Action_Store', 'data')],
-#     prevent_initial_call=True
-# )
-# def store_action_button_data(Action_var, click_data_Store, Button_Action_Store, callback_context):
-#     logger.info(f"\n\n store_action_button_data callback triggered.\n")
-#     logger.info(f"click_data: {click_data_Store}\n")
-#     logger.info(f"Button_Action_Store: {Button_Action_Store}\n")
-#     trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]  # Identifies the input that triggered the callback
-#     logger.info(f"Triggered by: {trigger_id}\n")
-#     if trigger_id == 'Button_Action':
-#         logger.info(f"Triggered by Button_Action with Action_var: {Action_var}\n")
-#         if Button_Action_Store:
-#             return Button_Action_Store
-#         else:
-#             raise PreventUpdate
-#     else:
-#         logger.info(f"\t\t\t\telse condition executed.\n\n\n")
-#         raise PreventUpdate
+# Callback to update ButtonAction_Store store, consecutive same clicks of 'undo' or 'refresh' buttons.
+@app.callback(
+    [Output('Button_Action_Store', 'data')],
+    [Input('Button_Action', 'value')],
+    [State('click-data', 'data'),
+     State('Button_Action_Store', 'data')],
+    prevent_initial_call=True
+)
+def store_action_button_data(Action_var, click_data_Store, Button_Action_Store, callback_context):
+    logger.info(f"\n\n store_action_button_data callback triggered.\n")
+    logger.info(f"click_data: {click_data_Store}\n")
+    logger.info(f"Button_Action_Store: {Button_Action_Store}\n")
+    trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]  # Identifies the input that triggered the callback
+    logger.info(f"Triggered by: {trigger_id}\n")
+    if trigger_id == 'Button_Action':
+        logger.info(f"Triggered by Button_Action with Action_var: {Action_var}\n")
+        if Button_Action_Store:
+            return Button_Action_Store
+        else:
+            raise PreventUpdate
+    else:
+        logger.info(f"\t\t\t\telse condition executed.\n\n\n")
+        raise PreventUpdate
 
 # Callback to update click data store, clicks on the waveform for annotation
 @app.callback(
     [Output('click-data', 'data'),
      Output('prev-file-path-and-channel', 'data')],
     [Input('ecg-graph', 'clickData'),
-     Input('FilePath_and_Channel', 'value'),
-     Input('Button_Action', 'value')],
+     Input('FilePath_and_Channel', 'value')],
     [State('click-data', 'data'),
      State('prev-file-path-and-channel', 'data')],
     prevent_initial_call=True
 )
-def store_click_data(click_data, file_path_and_channel_data, Action_var, clicks, prev_file_path_and_channel, callback_context):
+def store_click_data(click_data, file_path_and_channel_data, clicks, prev_file_path_and_channel, callback_context):
     logger.info(f"\n\n store_click_data callback triggered.\n")
     logger.info(f"click_data: {click_data}\n")
     logger.info(f"clicks: {clicks}\n")
@@ -234,12 +233,6 @@ def store_click_data(click_data, file_path_and_channel_data, Action_var, clicks,
         else:
             logger.info(f"Same file path and channel data received, not resetting click-data.\n")
             raise PreventUpdate  # Prevent callback if the values are the same
-        
-    elif trigger_id == 'Button_Action':
-        logger.info(f"\t\t\tConditional executed in store_click_data callback:\n\t\t\t\t\t\t-Action_var: {Action_var}\n")
-
-        raise PreventUpdate
-
     if click_data:
         clicks['Manual'] = True
         x_click = click_data['points'][0]['x']

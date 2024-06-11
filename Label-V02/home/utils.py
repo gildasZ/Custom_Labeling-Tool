@@ -6,6 +6,9 @@ import re
 import os
 import csv
 import logging
+import shutil
+import tkinter as tk
+from tkinter import messagebox
 from pathlib import Path
 from django.conf import settings  # Import Django settings
 
@@ -21,34 +24,47 @@ def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channe
     - channels (list): List of all channels available in the XML file.
     - selected_channel (str): The channel selected for the annotation.
     - annotation_data (dict): The data to be added to the CSV file. Should contain 'Start Index', 'End Index', 'Label', and 'Color'.
-    - task_to_do (str): The task to perform: 'add' for addind data, 'retrieve' for retrieving existing values, 'remove' for removing data, 'reset' for resetting the CSV file.
+    - task_to_do (str): 
+            The task to perform: 
+                    'add' for addind data to the working CSV file, 
+                    'retrieve' for retrieving existing values from the working CSV file, 
+                    'save' for saving the working CSV file,
+                    'remove' for removing data from the working CSV file, 
+                    'reset' for resetting the working CSV file.
 
     Returns:
     - list: A list of dictionaries containing the existing values for the selected channel, including the newly added element.
     """
+
+    working_csv_file_path, saving_csv_file_path = creating_file_paths(full_file_path)
 
     if task_to_do == 'add':
         logger.info(f"Adding data to a CSV file\n")
-        add_annotation_to_csv(channels, full_file_path, selected_channel, annotation_data)
+        add_annotation_to_csv(channels, working_csv_file_path, selected_channel, annotation_data)
     elif task_to_do == 'retrieve':
         logger.info(f"Retrieving existing annotations from CSV file\n")
-        return retrieve_existing_annotations(full_file_path, selected_channel)
+        return retrieve_existing_annotations(working_csv_file_path, selected_channel)
+    elif task_to_do == 'save':
+        logger.info(f"Saving the CSV file\n")
+        message, status = save_annotations_to_csv(working_csv_file_path, saving_csv_file_path)
+        return message, status
     else:
-        logger.info(f"Specify a valid task_to_do.\n")
+        message = f"Specify a valid task_to_do.\n"
+        logger.info(message)
         return []
 
-def add_annotation_to_csv(channels, full_file_path, selected_channel, annotation_data):
+def creating_file_paths(full_file_path):
     """
-    Adds an annotation row to a CSV file, creating the file and necessary directories if they don't exist.
-    
+    Creates file paths for the working and saving CSV files, creating necessary directories if they don't exist.
+
     Parameters:
-    - full_file_path (str): Full file path of the XML file.
     - channels (list): List of all channels available in the XML file.
+    - full_file_path (str): Full file path of the XML file.
     - selected_channel (str): The channel selected for the annotation.
     - annotation_data (dict): The data to be added to the CSV file. Should contain 'Start Index', 'End Index', 'Label', and 'Color'.
-    
+
     Returns:
-    - list: A list of dictionaries containing the existing values for the selected channel, including the newly added element.
+    - tuple: A tuple containing the paths for the working CSV file and the saving CSV file.
     """
     try:
         # Base path from settings
@@ -71,6 +87,21 @@ def add_annotation_to_csv(channels, full_file_path, selected_channel, annotation
         saving_csv_file_path.parent.mkdir(parents=True, exist_ok=True)
         logger.info(f"saving_csv_file_path = {saving_csv_file_path}\n")
 
+        return working_csv_file_path, saving_csv_file_path
+    except Exception as e:
+        logger.error(f"Error in handle_annotation_to_csv / creating_file_paths: {str(e)}\n")
+
+def add_annotation_to_csv(channels, working_csv_file_path, selected_channel, annotation_data):
+    """
+    Adds an annotation row to a CSV file, creating the file and necessary directories if they don't exist.
+
+    Parameters:
+    - channels (list): List of all channels available in the XML file.
+    - working_csv_file_path (str): Full file path of the working CSV file.
+    - selected_channel (str): The channel selected for the annotation.
+    - annotation_data (dict): The data to be added to the CSV file. Should contain 'Start Index', 'End Index', 'Label', and 'Color'.
+    """
+    try:
         # Create temporary file for manipulation 
         temp_file_path = Path(working_csv_file_path).with_suffix('.tmp')
         with open(temp_file_path, mode='w', newline='') as temp_file:
@@ -131,32 +162,20 @@ def add_annotation_to_csv(channels, full_file_path, selected_channel, annotation
         logger.info(f"working CSV file was updated, and the temporary file was removed..\n")
 
     except Exception as e:
-        logger.error(f"Error in handle_annotation_to_csv: {str(e)}\n")
+        logger.error(f"Error in handle_annotation_to_csv / add_annotation_to_csv: {str(e)}\n")
 
-def retrieve_existing_annotations(full_file_path, selected_channel):
+def retrieve_existing_annotations(working_csv_file_path, selected_channel):
     """
     Retrieves existing annotations for the selected channel from a CSV file.
 
     Parameters:
-    - full_file_path (str): Full file path of the XML file.
+    - working_csv_file_path (str): Full file path of the working CSV file.
     - selected_channel (str): The channel selected for the annotation.
 
     Returns:
     - list: A list of dictionaries containing the existing values for the selected channel.
     """
     try:
-        # Base path from settings
-        base_path = Path(settings.BASE_FILE_PATH)
-        # Ensure 'CSV_Annotations' directory exists
-        annotations_dir = base_path / 'CSV_Annotations'
-
-        # Derive relative path and the subdirectory of the xml file
-        relative_path = Path(full_file_path).relative_to(base_path).with_suffix('.csv')
-        subdirectory = relative_path.parent
-
-        # Path to the working CSV file
-        working_csv_file_path = annotations_dir / subdirectory / 'Working_Folder' / relative_path.name
-
         # List to store existing values
         existing_values = []
 
@@ -179,8 +198,44 @@ def retrieve_existing_annotations(full_file_path, selected_channel):
         logger.info(f"Retrieved existing annotations for {selected_channel} from {working_csv_file_path}\n")
         return existing_values
     except Exception as e:
-        logger.error(f"Error in retrieve_existing_annotations: {str(e)}\n")
+        logger.error(f"Error in handle_annotation_to_csv / retrieve_existing_annotations: {str(e)}\n")
         return []
+
+def save_annotations_to_csv(working_csv_file_path, saving_csv_file_path):
+    """
+    Saves the working CSV file to the saving directory.
+
+    Parameters:
+    - working_csv_file_path (str): Full file path of the working CSV file.
+    - saving_csv_file_path (str): Full file path where the CSV file should be saved.
+    """
+    try:
+        # Copy the working CSV file to the saving directory
+        if working_csv_file_path.exists():
+            shutil.copy2(working_csv_file_path, saving_csv_file_path)
+            logger.info(f"CSV file saved \n\tfrom {working_csv_file_path} \n\tto {saving_csv_file_path}\n")
+            message = 'Progress Saved successfully'
+            status = True
+            return message, status
+        else:
+            logger.error(f"Working CSV file does not exist: {working_csv_file_path}\n")
+            message = 'There is no work to Save'
+            status = False
+            return message, status
+    except Exception as e:
+        message = f"Error in handle_annotation_to_csv / save_annotations_to_csv: {str(e)}\n"
+        status = False
+        logger.error(message)
+        return message, status
+
+def pop_up_message(message, status=False):
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+    if status:
+        messagebox.showwarning("Completion", message)
+    else:
+        messagebox.showwarning("Warning", message)
+    root.destroy()  # Destroy the root window after the messagebox is closed
 
 def process_xml_data(file_path): # Working with WebSocket 
     file_path = html.unescape(file_path)  # Decode HTML entities
