@@ -16,10 +16,15 @@
     #folderDisplay, #fileDisplay {
         overflow-y: auto; /* Enables vertical scroll */
         flex: 1 0 100%; /* Uses all the space available of section 3 */
+        white-space: nowrap; /* Prevents text wrapping */
     }
 
     ul {
         padding-left: 20px;
+    }
+
+    li.root-folder:before {
+        content: 'v'; /* Default open icon for root */
     }
 
     li.folder:before {
@@ -40,6 +45,15 @@
     li.file i {
         margin-right: 5px; /* Adds space between the file icon and the text */
     }
+
+
+
+    li.folder {
+        margin-top: 10px;  /* Adds 10px margin at the top */
+        margin-bottom: 10px; /* Adds 10px margin at the bottom */
+    }
+
+
 
     /* Specific styles for the root folder icon to ensure it is visually distinct and unchanging */
     li.folder i.fa-folder-tree {
@@ -137,6 +151,7 @@
             const icon = document.createElement('i');
             if (isRoot) {
                 li.classList.add('root-folder'); // Add class for root folder
+                li.classList.add('root-open'); // Add a class for open root folders
                 icon.className = 'fa-solid fa-folder-tree'; // Specific class for root folder icons
             } else {
                 icon.className = 'fa-solid fa-folder'; // Default to solid folder icon for non-root folders
@@ -145,23 +160,35 @@
 
             li.appendChild(document.createTextNode(` ${key}`));
             const subUl = document.createElement('ul');
-            subUl.style.display = 'none';
+            // subUl.style.display = 'none';
+            if (isRoot) {
+                subUl.style.display = 'block'; // Set root folder to open by default
+            } else {
+                subUl.style.display = 'none'; // Keep non-root folders closed by default
+            }
             li.appendChild(subUl);
             ul.appendChild(li);
 
             li.addEventListener('click', function(event) {
+                // Prevent this click from propagating up to parent elements, which could trigger other click handlers unintentionally.
                 event.stopPropagation();
-                subUl.style.display = subUl.style.display === 'none' ? 'block' : 'none';
-                li.classList.toggle('open'); // Toggle 'open' class to change icon
-                // Check if the folder is now open or closed and update icon accordingly, but only for non-root folders
-                if (!li.classList.contains('root-folder')) {
-                    if (li.classList.contains('open')) {
-                        icon.className = 'fa-regular fa-folder'; // Change to regular folder icon when open for non-root
-                    } else {
-                        icon.className = 'fa-solid fa-folder'; // Change back to solid folder icon when closed for non-root
-                    }
+                // Determine the current visibility state of the folder's sub-elements (sub-folder and files list).
+                const isOpen = subUl.style.display === 'none';
+                // Toggle the visibility of sub-elements: if currently hidden (none), set to visible (block), and vice versa.
+                subUl.style.display = isOpen ? 'block' : 'none';
+                // Apply the 'open' class based on the new visibility state. This class affects both styling and the determination of the folder's state.
+                li.classList.toggle('open', isOpen);
+
+                // Check if the current folder being interacted with is the root folder.
+                if (li.classList.contains('root-folder')) {
+                    // Toggle the 'root-open' class based on the new visibility state, which is used specifically for root folder to manage its icon.
+                    li.classList.toggle('root-open', isOpen);
+                } else {
+                    // For non-root folders, toggle between regular and solid folder icons based on whether the folder is open.
+                    icon.className = li.classList.contains('open') ? 'fa-regular fa-folder' : 'fa-solid fa-folder';
                 }
-                currentActiveFolder = data[key]; // Set current folder
+                // Update the current active folder to the one that was just interacted with, storing its data structure.
+                currentActiveFolder = data[key];
             });
             appendNodes(data[key], subUl, false); // Ensure the false is explicitly passed for non-root folders
         });

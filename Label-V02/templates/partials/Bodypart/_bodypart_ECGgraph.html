@@ -29,6 +29,62 @@
         align-items: center;
         justify-content: center; 
     }
+
+    /* Modal (background) */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 10000; /* Ensure the modal is on top */
+        left: 50%;
+        top: 50%;
+        width: 100%;
+        height: 100%;
+        transform: translate(-50%, -50%);
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4); /* Semi-transparent background */
+    }
+
+    /* Modal Content */
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 500px;
+        height: auto; /* 100px; */
+        font-size: 28px;
+        border-radius: 10px; 
+        overflow: auto;
+    }
+
+    /* The Close Button */
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 32px;
+        font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    /* Modal Header */
+    .modal-header {
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    /* Modal Body */
+    .modal-body {
+        font-size: 18px;
+        text-align: left;
+        color: #0f0f0f;
+    }
 </style>
 
 <div class="graph_display-area">
@@ -42,7 +98,50 @@
     {% include 'partials/Bodypart/_bodypart_dropdown.html' %}
 </div>
 
+<!-- Custom Modal HTML -->
+<div id="myModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <div id="modalHeader" class="modal-header"></div>
+        <div id="modalBody" class="modal-body"></div>
+    </div>
+</div>
+
 <script>
+    // Get the modal
+    var modal = document.getElementById("myModal");
+    // Get the <span> element that closes the modal
+    var span = document.getElementsByClassName("close")[0];
+    // When the user clicks on <span> (x), close the modal
+    span.onclick = function() {
+        modal.style.display = "none";
+    }
+    // To close the modal if user clicks anywhere outside of it
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    // Function to show the custom modal
+    function showAlert(status, message) {
+        console.log("Function showAlert executed.");
+        var modalHeader = document.getElementById("modalHeader");
+        var modalBody = document.getElementById("modalBody");
+
+        if (status === true) {
+            modalHeader.innerHTML = "Complete";
+            modalHeader.style.color = "green"; // Set the color for "Complete"
+            console.log("Complete alert executed.");
+        } else {
+            modalHeader.innerHTML = "Warning";
+            modalHeader.style.color = "red"; // Set the color for "Warning"
+            console.log("Warning alert executed.");
+        }
+        modalBody.innerHTML = message; // Display the message in the modal body
+        modal.style.display = "block";
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const socket = new WebSocket('ws://' + window.location.host + '/ws/process-xml/'); // Establish WebSocket connection
         let absoluteFilePath = null; // Variable to hold the full path until the channel is selected
@@ -69,19 +168,36 @@
                 console.log("Existing_Data:", data.Existing_Data);
                 // Dispatch the event with data for other components to use
                 document.dispatchEvent(new CustomEvent('DjangoDash_retrieved_data_message', { detail: data }));
+            } else if (data.type === 'Save_Feedback') {
+                var message = data.Message;
+                var status = data.Status;
+                console.log("***Client received Save_Feedback data from Django:", data); // Debugging: log received data
+                // Log the feedback message and status
+                console.log("Save_Feedback message received:", message);
+                console.log("Save_Feedback status received:", status);
+                // Pop up window handling
+                showAlert(status, message);
             }
         }
 
         document.addEventListener('fileSelected', function(event) {
-            absoluteFilePath = event.detail.filePath; // Store the full path
-            // Prepare the data to send with WebSocket
-            var postData = {
-                type: 'processXML', // Specific type for this combined data
-                filePath: absoluteFilePath
-            };
-            // Send the data to the server via WebSocket
-            socket.send(JSON.stringify(postData));
-            console.log("Client sent the 'full file path' to Django for processing:", absoluteFilePath); // Debugging: log file path being sent
+            if (absoluteFilePath !== event.detail.filePath) {
+                absoluteFilePath = event.detail.filePath; // Store (Update) the full path
+                // Prepare the data to send with WebSocket
+                var postData = {
+                    type: 'processXML', // Specific type for this combined data
+                    filePath: absoluteFilePath
+                };
+                // Send the data to the server via WebSocket
+                socket.send(JSON.stringify(postData));
+                console.log("Client sent the 'full file path' to Django for processing:", absoluteFilePath); // Debugging: log file path being sent
+            } else {
+                console.log(
+                    "The 'full file path' didn't change, so nothing was sent to Django for processing:\n" +
+                    `\tprevious path: ${absoluteFilePath}\n` + // Make sure you are using backticks (`) here!
+                    `\tcurrent path click: ${event.detail.filePath}` // Make sure you are using backticks (`) here!
+                ); 
+            }
         });
 
         document.addEventListener('channelSelected', function(event) {
@@ -113,3 +229,15 @@
         });
     });
 </script>
+
+{% if message %}
+<script type="text/javascript">
+    var message = "{{ message }}";
+    var status = "{{ status }}";
+    if (status === 'warning') {
+        alert("Warning: " + message);
+    } else {
+        alert("Completion: " + message);
+    }
+</script>
+{% endif %}

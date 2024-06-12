@@ -39,15 +39,20 @@ def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channe
     working_csv_file_path, saving_csv_file_path = creating_file_paths(full_file_path)
 
     if task_to_do == 'add':
-        logger.info(f"Adding data to a CSV file\n")
+        logger.info(f"Adding data to a CSV file...\n")
         add_annotation_to_csv(channels, working_csv_file_path, selected_channel, annotation_data)
     elif task_to_do == 'retrieve':
-        logger.info(f"Retrieving existing annotations from CSV file\n")
-        return retrieve_existing_annotations(working_csv_file_path, selected_channel)
+        logger.info(f"Retrieving existing annotations from CSV file...\n")
+        existing_values = retrieve_existing_annotations(working_csv_file_path, selected_channel)
+        return existing_values
     elif task_to_do == 'save':
-        logger.info(f"Saving the CSV file\n")
+        logger.info(f"Saving the CSV file...\n")
         message, status = save_annotations_to_csv(working_csv_file_path, saving_csv_file_path)
         return message, status
+    elif task_to_do == 'reset':
+        logger.info(f"Resetting the working CSV file...\n")
+        refresh_working_file(working_csv_file_path)
+        return []
     else:
         message = f"Specify a valid task_to_do.\n"
         logger.info(message)
@@ -89,7 +94,7 @@ def creating_file_paths(full_file_path):
 
         return working_csv_file_path, saving_csv_file_path
     except Exception as e:
-        logger.error(f"Error in handle_annotation_to_csv / creating_file_paths: {str(e)}\n")
+        logger.error(f"Error in handle_annotation_to_csv / creating_file_paths: \n\t{str(e)}\n")
 
 def add_annotation_to_csv(channels, working_csv_file_path, selected_channel, annotation_data):
     """
@@ -162,7 +167,7 @@ def add_annotation_to_csv(channels, working_csv_file_path, selected_channel, ann
         logger.info(f"working CSV file was updated, and the temporary file was removed..\n")
 
     except Exception as e:
-        logger.error(f"Error in handle_annotation_to_csv / add_annotation_to_csv: {str(e)}\n")
+        logger.error(f"Error in handle_annotation_to_csv / add_annotation_to_csv: \n\t{str(e)}\n")
 
 def retrieve_existing_annotations(working_csv_file_path, selected_channel):
     """
@@ -198,7 +203,7 @@ def retrieve_existing_annotations(working_csv_file_path, selected_channel):
         logger.info(f"Retrieved existing annotations for {selected_channel} from {working_csv_file_path}\n")
         return existing_values
     except Exception as e:
-        logger.error(f"Error in handle_annotation_to_csv / retrieve_existing_annotations: {str(e)}\n")
+        logger.error(f"Error in handle_annotation_to_csv / retrieve_existing_annotations: \n\t{str(e)}\n")
         return []
 
 def save_annotations_to_csv(working_csv_file_path, saving_csv_file_path):
@@ -214,28 +219,39 @@ def save_annotations_to_csv(working_csv_file_path, saving_csv_file_path):
         if working_csv_file_path.exists():
             shutil.copy2(working_csv_file_path, saving_csv_file_path)
             logger.info(f"CSV file saved \n\tfrom {working_csv_file_path} \n\tto {saving_csv_file_path}\n")
-            message = 'Progress Saved successfully'
+            message = 'Progress Saved successfully!'
             status = True
             return message, status
         else:
             logger.error(f"Working CSV file does not exist: {working_csv_file_path}\n")
-            message = 'There is no work to Save'
+            message = 'There is no work to Save!'
             status = False
             return message, status
     except Exception as e:
-        message = f"Error in handle_annotation_to_csv / save_annotations_to_csv: {str(e)}\n"
+        message = f"Error in handle_annotation_to_csv / save_annotations_to_csv: \n\t{str(e)}!\n"
         status = False
         logger.error(message)
         return message, status
 
-def pop_up_message(message, status=False):
-    root = tk.Tk()
-    root.withdraw()  # Hide the root window
-    if status:
-        messagebox.showwarning("Completion", message)
-    else:
-        messagebox.showwarning("Warning", message)
-    root.destroy()  # Destroy the root window after the messagebox is closed
+def refresh_working_file(working_csv_file_path):
+    """
+    Refreshes the working CSV file by erasing its content except the headers.
+
+    Parameters:
+    - working_csv_file_path (str): Path to the working CSV file.
+    """
+    try:
+        with open(working_csv_file_path, 'r', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            headers = next(reader)  # Read the headers
+
+        with open(working_csv_file_path, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(headers)  # Write the headers back to the file
+        
+        logger.info(f"Working CSV file refreshed: \n\t{working_csv_file_path}\n")
+    except Exception as e:
+        logger.error(f"Error in handle_annotation_to_csv / refresh_working_file: \n\t{str(e)}\n")
 
 def process_xml_data(file_path): # Working with WebSocket 
     file_path = html.unescape(file_path)  # Decode HTML entities
