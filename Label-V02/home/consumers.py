@@ -142,7 +142,7 @@ class ECGConsumer(AsyncWebsocketConsumer):
     async def retrieved_data(self, event):
         # This method is called when a message of type 'retrieved_data' is sent to the group
         existing_Data = event['Existing_Data']
-        logger.info(f"\n+++++ Django Received Retrieved Data: \n\t\tExisting_Data: {existing_Data}\n\n")
+        logger.info(f"\n+++++ Django Received Retrieved Data: \n\t\tExisting_Data: \n{existing_Data}\n\n")
 
         # Send the retrieved data to the client
         await self.send(text_data=json.dumps({

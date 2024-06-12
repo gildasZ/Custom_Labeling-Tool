@@ -51,7 +51,7 @@ def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channe
         return message, status
     elif task_to_do == 'reset':
         logger.info(f"Resetting the working CSV file...\n")
-        refresh_working_file(working_csv_file_path)
+        refresh_working_file(working_csv_file_path, selected_channel)
         return []
     else:
         message = f"Specify a valid task_to_do.\n"
@@ -233,23 +233,46 @@ def save_annotations_to_csv(working_csv_file_path, saving_csv_file_path):
         logger.error(message)
         return message, status
 
-def refresh_working_file(working_csv_file_path):
+def refresh_working_file(working_csv_file_path, selected_channel):
     """
-    Refreshes the working CSV file by erasing its content except the headers.
+    Refreshes the working CSV file by erasing its content for the selected channel.
 
     Parameters:
     - working_csv_file_path (str): Path to the working CSV file.
+    - selected_channel (str): The channel to reset in the CSV file.
     """
     try:
-        with open(working_csv_file_path, 'r', newline='') as csvfile:
-            reader = csv.reader(csvfile)
-            headers = next(reader)  # Read the headers
+        if os.path.exists(working_csv_file_path):
 
-        with open(working_csv_file_path, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(headers)  # Write the headers back to the file
+            # Create temporary file for manipulation 
+            temp_file_path = Path(working_csv_file_path).with_suffix('.tmp')
+            with open(temp_file_path, mode='w', newline='') as temp_file:
+                pass  # This ensures the file is truncated (emptied) if it exists
         
-        logger.info(f"Working CSV file refreshed: \n\t{working_csv_file_path}\n")
+            with open(working_csv_file_path, mode='r', newline='') as csv_file, open(temp_file_path, mode='w', newline='') as temp_file:
+                reader = csv.reader(csv_file)
+                writer = csv.writer(temp_file)
+
+                headers = next(reader)  # Read the header row
+                writer.writerow(headers)  # Write the header to the temporary file
+
+                item_col_index = headers.index(f'{selected_channel} Items')
+
+                # Iterate through the rows after the headers row
+                for row in reader:
+                    # Clear only the columns related to the selected channel
+                    row[item_col_index] = ''
+                    row[item_col_index + 1] = ''
+                    row[item_col_index + 2] = ''
+                    row[item_col_index + 3] = ''
+                    row[item_col_index + 4] = ''
+                    writer.writerow(row)
+
+            # Replace the working csv file with the temporary file. This will delete the temporary file.
+            os.replace(temp_file_path, working_csv_file_path)
+            logger.info(f"Working CSV file refreshed: \n\t{working_csv_file_path}\n")
+        else:
+            logger.info(f"Nothing to reset. The working file does not exist: \n\t{working_csv_file_path}\n")
     except Exception as e:
         logger.error(f"Error in handle_annotation_to_csv / refresh_working_file: \n\t{str(e)}\n")
 
