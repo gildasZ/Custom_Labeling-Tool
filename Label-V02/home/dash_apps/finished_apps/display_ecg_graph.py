@@ -214,33 +214,24 @@ def store_click_data(click_data, file_path_and_channel_data, Action_var, clicks,
         file_path = prev_file_path_and_channel['File-path']
         channel = prev_file_path_and_channel['Channel']
         action_to_take = Action_var['Action']
-        if action_to_take=='refresh':
-            if file_path and channel:
-                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='reset')
-                if existing_values:
-                    last_item = existing_values[-1]
-                    start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
-                else:
-                    start_end_indices = []
-                logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
-                # Add a flag to indicate that this update is programmatic
-                return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
-        elif action_to_take=='undo':
-            if file_path and channel:
-                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='undo')
-                if existing_values:
-                    last_item = existing_values[-1]
-                    start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
-                else:
-                    start_end_indices = []
-                logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
-                # Add a flag to indicate that this update is programmatic
-                return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
+        if file_path and channel:
+            # Handle 'refresh' or 'undo' action
+            handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do=action_to_take)
+            # Retrieve existing data
+            existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+            if existing_values:
+                last_item = existing_values[-1]
+                start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
+            else:
+                start_end_indices = []
+            logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
+            # Add a flag to indicate that this update is programmatic
+            return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
         else:
             logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n\t...\n")
             raise PreventUpdate  # Prevent callback 
     
-    # Add elif trigger_id == 'ecg-graph':
+    # And for trigger_id == 'ecg-graph':
     if click_data:
         clicks['Manual'] = True
         x_click = click_data['points'][0]['x']

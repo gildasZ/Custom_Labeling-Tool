@@ -94,8 +94,15 @@ class ECGConsumer(AsyncWebsocketConsumer):
 
             # Update reset condition on receiving a new file path
             self.handle_condition = True
-            # Update reset condition on receiving a new file path
-            self.count_number = 0
+
+            if self.count_number == 1:
+                # This logic handles cases where you click reset only once for a selected channel of a given file, then
+                # because the received count_number by DjangoDash store_click_data callback is '0', when you click on
+                # refresh for another selected channel, the count should be different from '0' to trigger the callback.
+                self.count_number = 1
+            else:
+                # Update reset condition on receiving a new file path
+                self.count_number = 0
 
         #______________________________________________________________________________
         elif data['type'] == 'Refresh_Save_Undo':

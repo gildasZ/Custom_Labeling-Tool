@@ -29,10 +29,10 @@ def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channe
                     'add' for addind data to the working CSV file, 
                     'retrieve' for retrieving existing values from the working CSV file, 
                     'save' for saving the working CSV file,
-                    'remove' for removing data from the working CSV file, 
-                    'reset' for resetting the working CSV file.
+                    'refresh' for resetting the working CSV file.
+                    'undo' for undoing the last annotation for the selected channel.
 
-    Returns:
+    Returns sometimes:
     - list: A list of dictionaries containing the existing values for the selected channel, including the newly added element.
     """
 
@@ -49,10 +49,12 @@ def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channe
         logger.info(f"Saving the CSV file...\n")
         message, status = save_annotations_to_csv(working_csv_file_path, saving_csv_file_path)
         return message, status
-    elif task_to_do == 'reset':
+    elif task_to_do == 'undo':
+        logger.info(f"Undoing the last annotation in the working CSV file...\n")
+        undo_last_annotation(working_csv_file_path, selected_channel)
+    elif task_to_do == 'refresh':
         logger.info(f"Resetting the working CSV file...\n")
         refresh_working_file(working_csv_file_path, selected_channel)
-        return []
     else:
         message = f"Specify a valid task_to_do.\n"
         logger.info(message)
@@ -275,6 +277,71 @@ def refresh_working_file(working_csv_file_path, selected_channel):
             logger.info(f"Nothing to reset. The working file does not exist: \n\t{working_csv_file_path}\n")
     except Exception as e:
         logger.error(f"Error in handle_annotation_to_csv / refresh_working_file: \n\t{str(e)}\n")
+
+def undo_last_annotation(working_csv_file_path, selected_channel):
+    """
+    Undo the last annotation for the selected channel in the working CSV file.
+
+    Parameters:
+    - working_csv_file_path (str): Path to the working CSV file.
+    - selected_channel (str): The channel to undo the last annotation in the CSV file.
+    """
+    try:
+        if os.path.exists(working_csv_file_path):
+
+            # Create temporary file for manipulation 
+            temp_file_path = Path(working_csv_file_path).with_suffix('.tmp')
+            with open(temp_file_path, mode='w', newline='') as temp_file:
+                pass  # This ensures the file is truncated (emptied) if it exists
+        
+            with open(working_csv_file_path, mode='r', newline='') as csv_file, open(temp_file_path, mode='w', newline='') as temp_file:
+                reader = csv.reader(csv_file)
+                writer = csv.writer(temp_file)
+
+                headers = next(reader)  # Read the header row
+                writer.writerow(headers)  # Write the header to the temporary file
+
+                item_col_index = headers.index(f'{selected_channel} Items')
+
+                last_non_empty_row = None
+                row_index = 0
+
+                # Iterate through the rows to find the last non-empty row for the selected channel
+                for row in reader:
+                    if row[item_col_index]:
+                        last_non_empty_row_index = row_index
+                        row_index += 1
+                    else:
+                        break
+
+                if last_non_empty_row_index is None:
+                    logger.info(f"No annotations found for selected channel: \n\t{working_csv_file_path}\n")
+                    return
+
+                # Reset file pointer to the beginning
+                csv_file.seek(0)
+                reader = csv.reader(csv_file)
+                next(reader)  # Skip the header row again
+
+                row_index = 0
+                # Write rows to the temporary file, clearing the last non-empty row for the selected channel
+                for row in reader:
+                    if row_index == last_non_empty_row_index:
+                        row[item_col_index] = ''
+                        row[item_col_index + 1] = ''
+                        row[item_col_index + 2] = ''
+                        row[item_col_index + 3] = ''
+                        row[item_col_index + 4] = ''
+                    writer.writerow(row)
+                    row_index += 1
+
+            # Replace the working csv file with the temporary file. This will delete the temporary file.
+            os.replace(temp_file_path, working_csv_file_path)
+            logger.info(f"Last annotation undone for selected channel: \n\t{working_csv_file_path}\n")
+        else:
+            logger.info(f"Nothing to undo. The working file does not exist: \n\t{working_csv_file_path}\n")
+    except Exception as e:
+        logger.error(f"Error in handle_annotation_to_csv / undo_last_annotation: \n\t{str(e)}\n")
 
 def process_xml_data(file_path): # Working with WebSocket 
     file_path = html.unescape(file_path)  # Decode HTML entities
