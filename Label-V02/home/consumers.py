@@ -129,10 +129,20 @@ class ECGConsumer(AsyncWebsocketConsumer):
 
             elif action_var == 'save':
                 logger.info(f"\t\t\tConditional executed:\n\t\t\t\t\t\t-Action_var: {action_var}\n")
-                logger.info(f"\nCurrent file path: {self.current_file_path}")
-                logger.info(f"\nCurrent extracted channels: {self.channels_values}")
+                logger.info(f"\tCurrent file path: {self.current_file_path}")
+                logger.info(f"\tCurrent extracted channels: {self.channels_values}")
                 if self.current_file_path:
                     message, status = handle_annotation_to_csv(full_file_path=self.current_file_path, task_to_do='save')
+                    await self.send(text_data=json.dumps({
+                                                        'type': 'Save_Feedback',
+                                                        'Message': message,
+                                                        'Status': status
+                                                    }))
+                    
+            elif action_var == 'SaveAll':
+                logger.info(f"\t\t\tConditional executed:\n\t\t\t\t\t\t-Action_var: {action_var}\n")
+                if self.current_file_path:
+                    message, status = handle_annotation_to_csv(full_file_path=self.current_file_path, task_to_do='SaveAll')
                     await self.send(text_data=json.dumps({
                                                         'type': 'Save_Feedback',
                                                         'Message': message,
@@ -163,7 +173,8 @@ class ECGConsumer(AsyncWebsocketConsumer):
         annotation = event['annotation']
         click_indices = event.get('click_indices', ['Start_index', 'End_index'])
         item_number = event['item_number']
-        logger.info(f"\n+++++ Django Received form submission: \n-annotation: {annotation} \n-click indices: {click_indices} \n-and item_number: {item_number}\n")
+        segment_color = event['Color']
+        logger.info(f"\n+++++ Django Received form submission: \n-annotation: {annotation} \n-click indices: {click_indices} \n-item_number: {item_number}\n-and segment_color: {segment_color}")
 
         # Send the annotation as a response to the client
         await self.send(text_data=json.dumps({
@@ -171,5 +182,6 @@ class ECGConsumer(AsyncWebsocketConsumer):
             'Annotation_message': annotation,
             'Click_indices': click_indices,
             'Item_number': item_number,
+            'Color': segment_color,
         }))
         logger.info(f"\n----- Django sent form submission annotation, click indices and item number to the client: \n{annotation}, \n{click_indices}, \n{item_number}\n")

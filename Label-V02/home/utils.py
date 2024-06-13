@@ -29,6 +29,7 @@ def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channe
                     'add' for addind data to the working CSV file, 
                     'retrieve' for retrieving existing values from the working CSV file, 
                     'save' for saving the working CSV file,
+                    'SaveAll' for saving all the working CSV files,
                     'refresh' for resetting the working CSV file.
                     'undo' for undoing the last annotation for the selected channel.
 
@@ -39,15 +40,19 @@ def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channe
     working_csv_file_path, saving_csv_file_path = creating_file_paths(full_file_path)
 
     if task_to_do == 'add':
-        logger.info(f"Adding data to a CSV file...\n")
+        logger.info(f"Adding data to a working CSV file...\n")
         add_annotation_to_csv(channels, working_csv_file_path, selected_channel, annotation_data)
     elif task_to_do == 'retrieve':
-        logger.info(f"Retrieving existing annotations from CSV file...\n")
+        logger.info(f"Retrieving existing annotations from working CSV file...\n")
         existing_values = retrieve_existing_annotations(working_csv_file_path, selected_channel)
         return existing_values
     elif task_to_do == 'save':
-        logger.info(f"Saving the CSV file...\n")
+        logger.info(f"Saving the working CSV file...\n")
         message, status = save_annotations_to_csv(working_csv_file_path, saving_csv_file_path)
+        return message, status
+    elif task_to_do == 'SaveAll':
+        logger.info(f"Saving All the working CSV files...\n")
+        message, status = save_all_annotations_to_csv(working_csv_file_path, saving_csv_file_path)
         return message, status
     elif task_to_do == 'undo':
         logger.info(f"Undoing the last annotation in the working CSV file...\n")
@@ -231,6 +236,55 @@ def save_annotations_to_csv(working_csv_file_path, saving_csv_file_path):
             return message, status
     except Exception as e:
         message = f"Error in handle_annotation_to_csv / save_annotations_to_csv: \n\t{str(e)}!\n"
+        status = False
+        logger.error(message)
+        return message, status
+
+def save_all_annotations_to_csv(working_csv_file_path, saving_csv_file_path):
+    """
+    Saves all the working CSV files to their corresponding saving directories.
+    
+    Parameters:
+    - working_csv_file_path (str): Full file path of the working CSV file.
+    - saving_csv_file_path (str): Full file path where the CSV file should be saved.
+
+    Returns:
+    - message (str): Status message indicating success or failure.
+    - status (bool): True if saving was successful, False otherwise.
+    """
+    try:
+        # Extract the base path and annotations directory
+        base_path = Path(settings.BASE_FILE_PATH)
+        annotations_dir = base_path / 'CSV_Annotations'
+
+        # Extract the names of the immediate parents from the inputs
+        working_folder_name = Path(working_csv_file_path).parent.name
+        saving_folder_name = Path(saving_csv_file_path).parent.name
+
+        # Ensure the 'CSV_Annotations' directory exists
+        if not annotations_dir.exists():
+            message = 'No annotations directory found!'
+            status = False
+            return message, status
+
+        # Iterate through all CSV files in the working directories
+        for working_file in annotations_dir.glob(f'**/{working_folder_name}/*.csv'):
+            # Derive the saving file path by replacing the working folder name with the saving folder name
+            saving_file = working_file.parents[1] / saving_folder_name / working_file.name
+
+            # Ensure the saving directory exists
+            saving_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Copy the working CSV file to the saving directory
+            shutil.copy2(working_file, saving_file)
+            logger.info(f"CSV file saved \n\tfrom {working_file} \n\tto {saving_file}\n")
+
+        message = 'All progress saved successfully!'
+        status = True
+        return message, status
+
+    except Exception as e:
+        message = f"Error in handle_annotation_to_csv / save_all_annotations_to_csv: \n\t{str(e)}!\n"
         status = False
         logger.error(message)
         return message, status

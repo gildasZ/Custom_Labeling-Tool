@@ -58,7 +58,6 @@ app.layout = html.Div([
             label='This-Action',          # Label used to identify relevant messages
             channel_name='Receive_Django_Message_Channel'), # channel_name='Action_Requested') # Channel whose messages are to be examined
     dcc.Store(id='click-data', data= {'Indices': None, 'Manual': None}, storage_type='memory'),  # Store for click data
-    dcc.Store(id='prev-file-path-and-channel', data=None, storage_type='memory'),  # Store for previous file path and channel data, Initialized with an empty dict
     dcc.Store(id='Button_Action_Store', data=None, storage_type='memory'),  # Store for handling consecutive 'undo' or 'refresh' actions.
     dcc.Store(id='dummy-output', data=None, storage_type='memory'),
     html.Div(
@@ -113,7 +112,7 @@ def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, 
             'Start Index': click_indices[0],
             'End Index': click_indices[1],
             'Label': sanitized_input,
-            'Color': segment_color  # By default for now, later will include a condition for choosing the color
+            'Color': segment_color,  # By default for now, later will include a condition for choosing the color
         }
         handle_annotation_to_csv(channels, full_file_path, selected_channel, annotation_data, 'add')
         logger.info(f"Executed handle_annotation_to_csv function to add new annotations to a CSV file.\n")
@@ -135,11 +134,12 @@ def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, 
                 "type": "form_submission",  # This should match a method in your consumer
                 "annotation": sanitized_input,
                 "click_indices": click_indices,  # Include click indices in the sent data
-                "item_number": last_item_number  # Current item number
+                "item_number": last_item_number,  # Current item number
+                'Color': segment_color # Color coresponding to the annotation
             }
         )
         logger.info(f"async_to_sync was executed to send sanitized_input data along with click indices to Django.\n")
-        return {'status': 'completed'}  # Return some dummy data
+        return annotation_data  # Return some dummy data
 
 # This callback will clear the 'annotation-input' field whenever it is closed.
 @app.callback(
@@ -181,12 +181,12 @@ def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, enter_pressed, style,
     Output('click-data', 'data'), # If you have a single output, please don't use []
     [Input('ecg-graph', 'clickData'),
      Input('FilePath_and_Channel', 'value'),
-     Input('Button_Action', 'value')],
-    [State('click-data', 'data'),
-     State('FilePath_and_Channel', 'value')],
+     Input('Button_Action', 'value'),
+     Input('cancel-button', 'n_clicks')],
+    State('click-data', 'data'),
     prevent_initial_call=True
 )
-def store_click_data(click_data, file_path_and_channel_data, Action_var, clicks, prev_file_path_and_channel, callback_context):
+def store_click_data(click_data, file_path_and_channel_data, Action_var, cancel_clicks, clicks, callback_context):
     logger.info(f"\n\n store_click_data callback triggered.\n")
     logger.info(f"click_data: {click_data}\n")
     logger.info(f"clicks: {clicks}\n")
@@ -213,12 +213,31 @@ def store_click_data(click_data, file_path_and_channel_data, Action_var, clicks,
         
     elif trigger_id == 'Button_Action': # 'refresh' or 'undo'
         logger.info(f"\t\t\tConditional executed in store_click_data callback:\n\t\t\t\t\t\t-Action_var: {Action_var}\n")
-        file_path = prev_file_path_and_channel['File-path']
-        channel = prev_file_path_and_channel['Channel']
+        file_path = file_path_and_channel_data['File-path']
+        channel = file_path_and_channel_data['Channel']
         action_to_take = Action_var['Action']
         if file_path and channel:
             # Handle 'refresh' or 'undo' action
             handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do=action_to_take)
+            # Retrieve existing data
+            existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+            if existing_values:
+                last_item = existing_values[-1]
+                start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
+            else:
+                start_end_indices = []
+            logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
+            # Add a flag to indicate that this update is programmatic
+            return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
+        else:
+            logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n\t...\n")
+            raise PreventUpdate  # Prevent callback 
+    
+    elif trigger_id == 'cancel-button': 
+        logger.info(f"\t\t\tConditional executed in store_click_data callback:\n\t\t\t\t\t\t-Cancellation by: {cancel_clicks}\n")
+        file_path = file_path_and_channel_data['File-path']
+        channel = file_path_and_channel_data['Channel']
+        if file_path and channel:
             # Retrieve existing data
             existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
             if existing_values:
@@ -256,13 +275,13 @@ def store_click_data(click_data, file_path_and_channel_data, Action_var, clicks,
 @app.callback(
     Output('ecg-graph', 'figure'),
     [Input('FilePath_and_Channel', 'value'),
-     Input('click-data', 'data'),
-     Input('cancel-button', 'n_clicks')],
-     [State('FilePath_and_Channel', 'value'),
-      State('Button_Action', 'value'),]
+     Input('click-data', 'data'), 
+     Input('cancel-button', 'n_clicks'),
+     Input('dummy-output', 'data')], # Dummy input after the annotation is entered in the working csv file in handle_form_submission callback
+      State('Button_Action', 'value'),
     # prevent_initial_call=False # Allow the initial call to trigger the callback 
 )
-def update_graph(file_path_and_channel_data, clicks, cancel_clicks, prev_file_path_and_channel, Action_var, callback_context):
+def update_graph(file_path_and_channel_data, clicks, cancel_n_clicks, dummy_output, Action_var, callback_context):
     if not callback_context.triggered:
         logger.info(f"\n\n update_graph callback triggered for initialization of the Dashboard: \n\n")
         waveform_data = []
@@ -390,7 +409,7 @@ def update_graph(file_path_and_channel_data, clicks, cancel_clicks, prev_file_pa
                 fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
                 return fig
             
-    elif trigger_id == 'cancel-button':
+    elif trigger_id in ('cancel-button', 'dummy-output'):
         file_path = file_path_and_channel_data['File-path']
         channel = file_path_and_channel_data['Channel']
         

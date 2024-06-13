@@ -143,7 +143,7 @@
         document.addEventListener('DjangoDash_message', function(event) {
             const labeledPattern = event.detail.Annotation_message;
             const clickIndices = event.detail.Click_indices || []; // Get the click indices from the event detail
-            const color = event.detail.color || '#ff7f0e'; // Default color is #ffffff (White) or #ff7f0e (Orange)
+            const color = event.detail.Color || '#ff7f0e'; // Default color is #ffffff (White) or #ff7f0e (Orange)
             const Item_number = event.detail.Item_number; 
 
             console.log("*** File '_bodypart_labeled_patterns.html' received Annotation_message:", labeledPattern);

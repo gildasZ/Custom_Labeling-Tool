@@ -157,9 +157,12 @@
             } else if (data.type === 'DjangoDash_message') {
                 console.log("***Client received DjangoDash_message data from Django:", data); // Debugging: log received data
                 // Log the annotation, click indices and item number separately
-                console.log("Annotation message:", data.Annotation_message);
-                console.log("Click indices:", data.Click_indices);
-                console.log("Item number:", data.Item_number);
+                console.log(
+                    `Annotation message: ${data.Annotation_message}\n` + // Make sure you are using backticks (`) here!
+                    `\tClick indices: ${data.Click_indices}\n` + 
+                    `\tItem number: ${data.Item_number}\n` + 
+                    `\tColor: ${data.Color}` 
+                ); 
                 // Dispatch the event with data for other components to use
                 document.dispatchEvent(new CustomEvent('DjangoDash_message', { detail: data }));
             } else if (data.type === 'DjangoDash_retrieved_data_message') {
@@ -193,9 +196,9 @@
                 console.log("Client sent the 'full file path' to Django for processing:", absoluteFilePath); // Debugging: log file path being sent
             } else {
                 console.log(
-                    "The 'full file path' didn't change, so nothing was sent to Django for processing:\n" +
-                    `\tprevious path: ${absoluteFilePath}\n` + // Make sure you are using backticks (`) here!
-                    `\tcurrent path click: ${event.detail.filePath}` // Make sure you are using backticks (`) here!
+                    "The 'full file path' didn't change, so nothing was sent to Django for processing:\n" + // Make sure you are using backticks (`) here!
+                    `\tprevious path: ${absoluteFilePath}\n` + 
+                    `\tcurrent path click: ${event.detail.filePath}` 
                 ); 
             }
         });
@@ -225,7 +228,7 @@
             };
             // Send the data to the server via WebSocket
             socket.send(JSON.stringify(postData));
-            console.log("   Client sent the 'Refresh or Save or Undo' action to Django for processing,      action:", action_var); // Debugging: log file path being sent
+            console.log("   Client sent the 'Refresh or Save or Undo or Save All' action to Django for processing,      action:", action_var); // Debugging: log file path being sent
         });
     });
 </script>
