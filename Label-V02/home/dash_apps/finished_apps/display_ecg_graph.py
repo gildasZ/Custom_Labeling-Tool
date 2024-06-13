@@ -107,11 +107,13 @@ def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, 
         logger.info(f"\t\tfull_file_path data: '{full_file_path}' \n\t\tand selected_channel: '{selected_channel}'\n")
 
         # Annotation data for handle_annotation_to_csv function 
+        # Choosing the color for the segment
+        segment_color = select_segment_color(sanitized_input)
         annotation_data = {
             'Start Index': click_indices[0],
             'End Index': click_indices[1],
             'Label': sanitized_input,
-            'Color': '#FF6347'  # By default for now, later will include a condition for choosing the color
+            'Color': segment_color  # By default for now, later will include a condition for choosing the color
         }
         handle_annotation_to_csv(channels, full_file_path, selected_channel, annotation_data, 'add')
         logger.info(f"Executed handle_annotation_to_csv function to add new annotations to a CSV file.\n")
@@ -254,12 +256,13 @@ def store_click_data(click_data, file_path_and_channel_data, Action_var, clicks,
 @app.callback(
     Output('ecg-graph', 'figure'),
     [Input('FilePath_and_Channel', 'value'),
-     Input('click-data', 'data'),],
+     Input('click-data', 'data'),
+     Input('cancel-button', 'n_clicks')],
      [State('FilePath_and_Channel', 'value'),
       State('Button_Action', 'value'),]
     # prevent_initial_call=False # Allow the initial call to trigger the callback 
 )
-def update_graph(file_path_and_channel_data, clicks, prev_file_path_and_channel, Action_var, callback_context):
+def update_graph(file_path_and_channel_data, clicks, cancel_clicks, prev_file_path_and_channel, Action_var, callback_context):
     if not callback_context.triggered:
         logger.info(f"\n\n update_graph callback triggered for initialization of the Dashboard: \n\n")
         waveform_data = []
@@ -386,6 +389,50 @@ def update_graph(file_path_and_channel_data, clicks, prev_file_path_and_channel,
                 logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
                 fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
                 return fig
+            
+    elif trigger_id == 'cancel-button':
+        file_path = file_path_and_channel_data['File-path']
+        channel = file_path_and_channel_data['Channel']
+        
+        logger.info(f"\n update_graph is redrawing the graph on the request of \n\t{trigger_id}.\n")
+
+        # Use this later once everything is okay
+        # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
+        # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
+
+        # Check if either file_path or channel is None or empty
+
+        if file_path and channel:
+            existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+            logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
+
+            # channel_layer = get_channel_layer()
+            # async_to_sync(channel_layer.group_send)(
+            #     "ecg_analysis_group",  # This is the group name that your consumer should be listening to
+            #     {
+            #         "type": "retrieved_data",  # This should match a method in your consumer
+            #         "Existing_Data": existing_values,
+            #     }
+            # )
+            # logger.info(f"async_to_sync was executed to send Retrieved Data to Django.\n")
+
+            logger.info(f"\nUpdating graph in DjangoDash with \n-file path: {file_path} \n-and channel: {channel}\n")
+            waveform_data = extract_waveform(file_path, channel) # Assume this function exists and works
+            plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
+            Title_Color = 'green'
+            logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
+            fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
+            return fig
+        
+        # Check if either file_path or channel is None or empty
+        else:
+            logger.info(f"\nNo valid file path or channel data received in DjangoDash: \n-file_path: '{file_path}' (type: {type(file_path)}) \n-and channel: '{channel}' (type: {type(channel)})\n")
+            waveform_data = []
+            Title_Color = 'orange'
+            plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
+            logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
+            fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+            return fig
 
 # Function to plot waveform data using Plotly
 def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_values=None, click_data=None):
@@ -558,3 +605,36 @@ def extract_waveform(xml_file_path, target_channel):
     except Exception as e:
         logger.info(f"\n-------In DjangoDash, unexpected error while processing file {xml_file_path}: \n{str(e)}\n")
         return [] #waveform_data
+
+# Function to select the color
+def select_segment_color(sanitized_input):
+    # List of colors
+    colors = [
+        "#ff7f0e",  # orange
+        "#d62728",  # red
+        "#9467bd",  # purple
+        "#8c564b",  # brown
+        "#e377c2",  # pink
+        "#7f7f7f",  # gray
+        "#bcbd22",  # yellow-green
+        "#17becf",  # cyan
+        "#1a55FF",  # deep blue
+        "#db7100"   # dark orange
+    ]
+    # Default color
+    # default_color = "#4fa1ee"
+    default_color = "#9467bd" # purple
+    
+    try:
+        # Attempt to convert the input to an integer
+        input_as_int = int(sanitized_input)
+        # Check if the integer is within the valid range
+        if 0 <= input_as_int < len(colors):
+            return colors[input_as_int]
+    except ValueError:
+        # If conversion fails, fall back to the default color
+        pass
+
+    # Return the default color if the input is not a valid integer
+    return default_color
+    
