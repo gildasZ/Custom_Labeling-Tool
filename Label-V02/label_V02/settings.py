@@ -30,11 +30,17 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Externalize Redis Settings in Django's settings.py
 REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
 REDIS_DB = 0
+
+LOGIN_URL = '/login/'
+# LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/welcome/'  # Redirect to the welcome view after successful login
+LOGOUT_URL = '/logout/'
+REGISTER_URL = '/register/'
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 # Application definition
 
@@ -70,6 +76,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_plotly_dash.middleware.BaseMiddleware', # Added, consider removing if any issues (added from https://django-plotly-dash.readthedocs.io/en/latest/installation.html)
     'django_plotly_dash.middleware.ExternalRedirectionMiddleware', # Added from https://django-plotly-dash.readthedocs.io/en/latest/configuration.html#configuration
+    'home.middleware.AutoLogoutMiddleware',  # Add this line
 ]
 
 ROOT_URLCONF = 'label_V02.urls'
@@ -128,6 +135,10 @@ Don't forget to run these 2 oommand lines if you change the database:
 # }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+# Ensure the session cookie is not persistent
+SESSION_COOKIE_SECURE = False  # Set to True if using HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_SAVE_EVERY_REQUEST = True  # Optional: Save the session to the database on every request
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators

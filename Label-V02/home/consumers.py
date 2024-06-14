@@ -13,39 +13,79 @@ logger = logging.getLogger('home')
 
 class ECGConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        logger.info("\nWebSocket connect called.\n")
-        # Initialize instance variables: channels extracted from xml files, current file path, reset condition 
-        # for consecutive 'undo' or 'refresh' clicks, the consecutive excution count number, and past action.
-        self.channels_values = None
-        self.current_file_path = None
-        self.handle_condition = False
-        self.count_number = 0
-        self.past_action = None
-        # Join the group that will receive messages from DjangoDash
-        await self.channel_layer.group_add("ecg_analysis_group", self.channel_name)
-        # await self.accept()
-        try:
-            await self.accept()
-        except asyncio.CancelledError:
-            await self.close(code=1001)  # Indicates that the server is shutting down
+        self.user = self.scope["user"]  # Access the user from the scope
+        if not self.user.is_authenticated:
+            await self.close()
+        else:
+            logger.info(f"\nWebSocket connect called by {self.user.username}.\n")
+            # Initialize instance variables: channels extracted from xml files, current file path, reset condition 
+            # for consecutive 'undo' or 'refresh' clicks, the consecutive excution count number, and past action.
+            self.channels_values = None
+            self.current_file_path = None
+            self.handle_condition = False
+            self.count_number = 0
+            self.count_number_empty_channel = 0
+            self.past_action = None
+
+            # Join the group that will receive messages from DjangoDash
+            self.User_id = self.user.username
+
+            # Use this later
+
+            # # Initialize instance variables in a dictionary
+            # self.user_data = {
+            #     'channels_values': None,
+            #     'current_file_path': None,
+            #     'handle_condition': False,
+            #     'count_number': 0,
+            #     'past_action': None,
+            #     'count_number_empty_channel': 0
+            # }
+
+            self.group_name = f"ecg_analysis_{self.User_id}"
+            await self.channel_layer.group_add(self.group_name, self.channel_name)
+            try:
+                await self.accept()
+            except asyncio.CancelledError:
+                await self.close(code=1001)  # Indicates that the server is shutting down
 
     async def disconnect(self, close_code):
-        # Leave the group on disconnect
-        await self.channel_layer.group_discard("ecg_analysis_group", self.channel_name)
-        logger.info(f"\nWebSocket disconnect called with close code {close_code}.\n")
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        logger.info(f"\nWebSocket disconnect called with close code {close_code} by {self.user.username}.\n")
 
     async def receive(self, text_data):
-        logger.info(f"\nDjango Received data through WebSocket: {text_data}.\n")
+        logger.info(f"\nDjango Received data through WebSocket from {self.user.username}: {text_data}.\n")
         data = json.loads(text_data)
 
         #______________________________________________________________________________
         if data['type'] == 'processXML':
             # Sending message to Pipe in DjangoDash ###################################
-            Data_to_Send = {'File-path': None, 'Channel': None}
+            
+            # Send the User ID to Pipe
+            Data_to_Send = {'User_id': self.User_id}
             await async_send_to_pipe_channel(
-                        channel_name = 'Receive_Django_Message_Channel',  # Fixed channel name for the first pipe
-                        label = 'Path_and_Channel_label',  # Fixed label for the first pipe
+                        channel_name = 'User_id_channel',  # Fixed channel name for the first pipe
+                        label = 'User_id_Label',  # Fixed label for the first pipe
                         value = Data_to_Send)
+            logger.info(f"\n+++++ Django sent Message Channel data to dpd.Pipe: {Data_to_Send}")
+            
+            # Sending empty data to Pipe
+            if self.count_number_empty_channel == 0:
+                self.count_number_empty_channel += 5
+            else:
+                self.count_number_empty_channel = 0
+            counting = self.count_number_empty_channel
+            Data_to_Send = {'No_Count': counting}
+            await async_send_to_pipe_channel(
+                        channel_name = 'Empty_Django_Message_Channel',  # Fixed channel name for the first pipe
+                        label = 'No_Path_and_Channel_label',  # Fixed label for the first pipe
+                        value = Data_to_Send)
+            
+            # Data_to_Send = {'File-path': None, 'Channel': None}
+            # await async_send_to_pipe_channel(
+            #             channel_name = 'Receive_Django_Message_Channel',  # Fixed channel name for the second pipe
+            #             label = 'Path_and_Channel_label',  # Fixed label for the second pipe
+            #             value = Data_to_Send)
             logger.info(f"\n+++++ Django sent empty Message Channel data to dpd.Pipe: {Data_to_Send}")
 
             response = process_xml_data(data['filePath'])
@@ -69,7 +109,7 @@ class ECGConsumer(AsyncWebsocketConsumer):
                                                     }))
                 Data_to_Send = {'all_channels': self.channels_values}
                 await async_send_to_pipe_channel(
-                        channel_name = 'Receive_Django_Message_Channel',  # Fixed channel name for the second pipe
+                        channel_name = 'Channels_Extracted',  # Fixed channel name for the second pipe
                         label = 'All-Channels',  # Fixed label for the second pipe
                         value = Data_to_Send)
                 logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}")
@@ -94,16 +134,7 @@ class ECGConsumer(AsyncWebsocketConsumer):
 
             # Update reset condition on receiving a new file path
             self.handle_condition = True
-
-            if self.count_number == 1:
-                # This logic handles cases where you click reset only once for a selected channel of a given file, then
-                # because the received count_number by DjangoDash store_click_data callback is '0', when you click on
-                # refresh for another selected channel, the count should be different from '0' to trigger the callback.
-                self.count_number = 1
-            else:
-                # Update reset condition on receiving a new file path
-                self.count_number = 0
-
+            
         #______________________________________________________________________________
         elif data['type'] == 'Refresh_Save_Undo':
             action_var = data['Action_var']
@@ -113,19 +144,17 @@ class ECGConsumer(AsyncWebsocketConsumer):
                 logger.info(f"\t\t\tConditional executed:\n\t\t\t\t\t\t-Action_var: {action_var}\n")
                 # Only send data if self.handle_condition is True
                 if self.handle_condition:
-                    if self.past_action != action_var:
-                        # Store the current sent action as past action
-                        self.past_action = action_var
+                    if self.count_number == 0: 
+                        self.count_number += 10
+                    else:
                         self.count_number = 0
                     # Sending message to Pipe in DjangoDash 
                     Data_to_Send = {'Action': action_var, 'Click_Order': self.count_number}
                     await async_send_to_pipe_channel(
-                                channel_name = 'Receive_Django_Message_Channel',  # Fixed channel name for the second pipe
-                                label = 'This-Action',  # Fixed label for the second pipe
+                                channel_name = 'This_Action_Channel',  # Fixed channel name for the second pipe
+                                label = 'This_Action',  # Fixed label for the second pipe
                                 value = Data_to_Send)
                     logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}")
-                    # Increment the click count for the next consecutive click
-                    self.count_number += 1
 
             elif action_var == 'save':
                 logger.info(f"\t\t\tConditional executed:\n\t\t\t\t\t\t-Action_var: {action_var}\n")

@@ -44,34 +44,3 @@ application = ProtocolTypeRouter({
 
 # Log using the configured settings in Django's settings.py
 logger.info(f"\nASGI configuration for DJANGO_SETTINGS_MODULE: {os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'label_V02.settings')}\n")
-
-
-
-
-# application = ProtocolTypeRouter({
-#     "http": django_asgi_app,
-#     "websocket": AuthMiddlewareStack(
-#         URLRouter([
-#             path("ws/process-xml/", MyConsumer.as_asgi()),
-#         ])
-#     ),
-# })
-
-
-
-
-# application = ProtocolTypeRouter({
-#     "http": get_asgi_application(),
-# })
-
-
-# application = ProtocolTypeRouter({
-#     "http": get_asgi_application(),
-#     "websocket": AllowedHostsOriginValidator(
-#         AuthMiddlewareStack(
-#             URLRouter([
-#                 path("ws/somepath/", MyConsumer.as_asgi()),
-#             ])
-#         )
-#     ),
-# })

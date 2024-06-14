@@ -232,15 +232,3 @@
         });
     });
 </script>
-
-{% if message %}
-<script type="text/javascript">
-    var message = "{{ message }}";
-    var status = "{{ status }}";
-    if (status === 'warning') {
-        alert("Warning: " + message);
-    } else {
-        alert("Completion: " + message);
-    }
-</script>
-{% endif %}

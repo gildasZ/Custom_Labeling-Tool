@@ -62,6 +62,13 @@
         <button type="button" onclick="location.href='#'" class="footer-button" id="AllSaveButton">
             <strong>Save All</strong>
         </button>
+        <!-- Logout Button -->
+        <form method="post" action="{% url 'logout' %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="footer-button" id="logoutButton">
+                <strong>Logout</strong>
+            </button>
+        </form>
         <!-- Add other buttons -->
     </div>
     <p class="footer-text">Copyright &copy; 2024 NYCU/FCA Lab labeling tool. All rights reserved.</p>
@@ -90,6 +97,10 @@
         console.log("'Save All' button clicked");
         console.log("   Dispatching 'buttonClick' event dispatched with action: 'SaveAll'.");
         document.dispatchEvent(new CustomEvent('buttonClick', { detail: { action: 'SaveAll' } }));
+    });
+
+    document.getElementById('logoutButton').addEventListener('click', function() {
+        console.log("'Logout' button clicked");
     });
 </script>
 <!-- End of Footer -->

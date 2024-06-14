@@ -43,23 +43,32 @@ app.layout = html.Div([
                                     },
                                     config={"staticPlot": False},  # Allow hover effects
                                     ), # Think about removing this style later
+    dpd.Pipe(id='session_user_id',    # ID in callback
+            value = {'User_id': None},
+            label='User_id_Label',                 # Label used to identify relevant messages
+            channel_name='User_id_channel'), # Channel whose messages are to be examined
+    dpd.Pipe(id='No_FilePath_and_Channel',    # ID in callback
+            value = {'No_Count': None},
+            label='No_Path_and_Channel_label',                      # Label used to identify relevant messages
+            channel_name='Empty_Django_Message_Channel'), # Channel whose messages are to be examined
     dpd.Pipe(id='FilePath_and_Channel',    # ID in callback
             # value = {'File-path': r"C:\Users\gilda\OneDrive\Documents\_NYCU\Master's Thesis\LABORATORY\Labeling Tool\Testing_Folder\20160101_110598000517103_EKG_11059800_110598000517103_001.xml", 
             #          'Channel': "II"},
-            value = {'File-path': None, 'Channel': None},
+            value = None, #{'File-path': None, 'Channel': None},
             label='Path_and_Channel_label',                      # Label used to identify relevant messages
             channel_name='Receive_Django_Message_Channel'), # channel_name='Path_and_Channel_data_channel'), # Channel whose messages are to be examined
     dpd.Pipe(id='Channels_Data',           # ID in callback
             value = {'all_channels': None},
             label='All-Channels',          # Label used to identify relevant messages
-            channel_name='Receive_Django_Message_Channel'), # channel_name='Channels_Extracted'), # Channel whose messages are to be examined
+            channel_name='Channels_Extracted'), # channel_name='Channels_Extracted'), # Channel whose messages are to be examined
     dpd.Pipe(id='Button_Action',           # ID in callback
             value = {'Action': None, 'Click_Order': None},
-            label='This-Action',          # Label used to identify relevant messages
-            channel_name='Receive_Django_Message_Channel'), # channel_name='Action_Requested') # Channel whose messages are to be examined
+            label='This_Action',          # Label used to identify relevant messages
+            channel_name='This_Action_Channel'), # channel_name='Action_Requested') # Channel whose messages are to be examined
     dcc.Store(id='click-data', data= {'Indices': None, 'Manual': None}, storage_type='memory'),  # Store for click data
     dcc.Store(id='Button_Action_Store', data=None, storage_type='memory'),  # Store for handling consecutive 'undo' or 'refresh' actions.
     dcc.Store(id='dummy-output', data=None, storage_type='memory'),
+    dcc.Store(id='Current_FilePath_and_Channel', data=None, storage_type='memory'), # I am using this to avoid id='FilePath_and_Channel' triggering 2 callbacks at once
     html.Div(
         id='input-modal',
         children=[
@@ -83,13 +92,16 @@ app.layout = html.Div([
     [State('annotation-input', 'value'),
      State('click-data', 'data'),
      State('FilePath_and_Channel', 'value'),
-     State('Channels_Data', 'value')],
+     State('Channels_Data', 'value'),
+     State('session_user_id', 'value')],  # Assume session-user-id holds the user ID,
     prevent_initial_call=True
 )
-def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, file_path_and_channel_data, channels_data, callback_context):
+def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, file_path_and_channel_data, channels_data, user_id_pipe, callback_context):
     logger.info(f"\n\n********handle_form_submission callback triggered.\n")
     if not callback_context.triggered:
         raise PreventUpdate  # Prevent callback if no input has triggered it
+    user_id = user_id_pipe['User_id'] 
+    logger.info(f"In handle_form_submission callback, working with user: {user_id}\n")
     button_id = callback_context.triggered[0]['prop_id'].split('.')[0]
     logger.info(f"Triggered by: {button_id}\n")
     if button_id in ('submit-button', 'annotation-input'): 
@@ -129,7 +141,7 @@ def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, 
 
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
-            "ecg_analysis_group",  # This is the group name that your consumer should be listening to
+            f"ecg_analysis_{user_id}",  # This is the group name that your consumer should be listening to
             {
                 "type": "form_submission",  # This should match a method in your consumer
                 "annotation": sanitized_input,
@@ -140,6 +152,9 @@ def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, 
         )
         logger.info(f"async_to_sync was executed to send sanitized_input data along with click indices to Django.\n")
         return annotation_data  # Return some dummy data
+    else:
+        logger.info(f"This is strange. The callback shouldn't have been triggered.\n")
+        raise PreventUpdate
 
 # This callback will clear the 'annotation-input' field whenever it is closed.
 @app.callback(
@@ -164,35 +179,249 @@ def clear_input(submit_clicks, cancel_clicks, enter_pressed):
     prevent_initial_call=True
 )
 def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, enter_pressed, style, callback_context):
-    logger.info(f"\n\n toggle_modal callback triggered.\n")
     # logger.info(f"\ncallback_context: \n{callback_context}\n")
     if not callback_context.triggered:
         raise PreventUpdate  # Prevent callback if no input has triggered it
     button_id = callback_context.triggered[0]['prop_id'].split('.')[0]
-    logger.info(f"Triggered by: {button_id}\n\n")
+    logger.info(f"""
+                \n\ntoggle_modal callback triggered by: {button_id}\n
+                clicks: {clicks}\n
+                submit_n_clicks: {submit_n_clicks}\n
+                cancel_n_clicks: {cancel_n_clicks}\n
+                enter_pressed: {enter_pressed}\n
+                """)
     if button_id == 'click-data' and clicks['Indices'] and clicks['Manual'] and len(clicks['Indices']) == 2:
         style['display'] = 'block'  # Show modal
     elif button_id in ('submit-button', 'cancel-button', 'annotation-input'):
         style['display'] = 'none'   # Hide modal
+    logger.info(f"\n\t toggle_modal finished running.\n")
     return style
+
+@app.callback(
+    Output('ecg-graph', 'figure'),
+    [Input('FilePath_and_Channel', 'value'),
+     Input('No_FilePath_and_Channel', 'value'),
+     Input('click-data', 'data'), 
+     Input('cancel-button', 'n_clicks'),
+     Input('dummy-output', 'data')], # Dummy input after the annotation is entered in the working csv file in handle_form_submission callback
+    [State('Button_Action', 'value'),
+     State('session_user_id', 'value')]
+    # prevent_initial_call=False # Allow the initial call to trigger the callback 
+)
+def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clicks, cancel_n_clicks, dummy_output, Action_var, user_id_pipe, callback_context):
+    # if not callback_context.triggered:
+    if not callback_context.triggered or (callback_context.triggered[0]['prop_id'].split('.')[0] == 'dummy-output' and dummy_output is None):
+        logger.info(f"\n\nupdate_graph callback triggered for initialization of the Dashboard: \n")
+        waveform_data = []
+        Title_Color = 'orange'
+        plot_title = f"\tInitializing. No Data Available. Time: {str(datetime.datetime.now())}"
+        fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+
+        logger.info(f"""
+                    dummy_output: \t{dummy_output}\n
+                    FilePath_and_Channel: {file_path_and_channel_data}\n
+                    click-data: {clicks}\n
+                    cancel-button n_clicks: {cancel_n_clicks}\n
+                    Button_Action: {Action_var}\n
+                    """)
+        return fig
+        # raise PreventUpdate
+    
+    user_id = user_id_pipe['User_id'] 
+    trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]  # Identifies the input that triggered the callback
+    logger.info(f"""
+                \n\n In update_graph callback, working with user: {user_id}\n
+                \n update_graph callback triggered by trigger_id: \t{trigger_id}\n
+                \n dummy_output: \t{dummy_output}\n
+                FilePath_and_Channel: {file_path_and_channel_data}
+                click-data: {clicks}
+                cancel-button n_clicks: {cancel_n_clicks}
+                Button_Action: {Action_var}\n
+                """)
+
+    if trigger_id == 'FilePath_and_Channel':
+        file_path = file_path_and_channel_data['File-path']
+        channel = file_path_and_channel_data['Channel']
+        logger.info(f"\n update_graph received \n\t-file_path: '{file_path}' (type: {type(file_path)}) \n\t-and channel: '{channel}' (type: {type(channel)})\n")
+   
+        # Use this later once everything is okay
+        # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
+        # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
+
+        if file_path and channel:
+            existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+            logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
+
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"ecg_analysis_{user_id}",  # This is the group name that your consumer should be listening to
+                {
+                    "type": "retrieved_data",  # This should match a method in your consumer
+                    "Existing_Data": existing_values,
+                }
+            )
+            logger.info(f"async_to_sync was executed to send Retrieved Data to Django.\n")
+
+            logger.info(f"\nUpdating graph in DjangoDash with \n\t-file path: {file_path} \n\t-and channel: {channel}\n")
+            waveform_data = extract_waveform(file_path, channel) # Assume this function exists and works
+            plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
+            Title_Color = 'green'
+            logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
+            fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
+            return fig
+    
+        # Check if either file_path or channel is None or empty
+        else:
+            logger.info(f"\nNo valid file path or channel data received in DjangoDash: \n-file_path: '{file_path}' (type: {type(file_path)}) \n-and channel: '{channel}' (type: {type(channel)})\n")
+            waveform_data = []
+            Title_Color = 'orange'
+            plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
+            logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
+            fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+            return fig
+
+    elif trigger_id == 'No_FilePath_and_Channel':
+        logger.info(f"\n update_graph Is emptying the graph.\n")
+        waveform_data = []
+        Title_Color = 'orange'
+        plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
+        fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+        return fig
+        
+    elif trigger_id == 'click-data':
+        if clicks['Manual']:
+            if clicks['Indices'] and len(clicks['Indices']) == 2:
+                file_path = file_path_and_channel_data['File-path']
+                channel = file_path_and_channel_data['Channel']
+
+                # Check if either file_path or channel is None or empty
+                if file_path and channel:
+                    logger.info(f"\nOn 2 clicks, updating graph in DjangoDash with \n-file path: {file_path} \n-and channel: {channel}\n")
+                    waveform_data = extract_waveform(file_path, channel) # Assume this function exists and works
+                    plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
+                    Title_Color = 'green'
+                    logger.info(f"\nOn 2 clicks, 'if condition': waveform_data length: {len(waveform_data)}\n")
+                    existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+                    logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
+                    fig = plot_waveform(waveform_data, plot_title, Title_Color, existing_values=existing_values, click_data=clicks['Indices']) # Assume this function exists and works
+                    return fig
+            
+                else:
+                    logger.info(f"\nOn 2 clicks, no valid file path or channel data received in DjangoDash: \n-file_path: '{file_path}' (type: {type(file_path)}) \n-and channel: '{channel}' (type: {type(channel)})\n")
+                    waveform_data = [] # Assume this function exists and works
+                    Title_Color = 'orange'
+                    plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
+                    logger.info(f"\nOn 2 clicks, 'else condition': waveform_data length: {len(waveform_data)}\n")
+                    fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+                    return fig
+            
+            else:
+                raise PreventUpdate
+        else:
+            file_path = file_path_and_channel_data['File-path']
+            channel = file_path_and_channel_data['Channel']
+            action_to_take = Action_var['Action']
+            
+            logger.info(f"\n update_graph is redrawing the graph on the request of \n\tAction '{action_to_take}' from {Action_var}\n")
+    
+            # Use this later once everything is okay
+            # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
+            # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
+
+            # Check if either file_path or channel is None or empty
+
+            if file_path and channel:
+                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+                logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
+
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"ecg_analysis_{user_id}",  # This is the group name that your consumer should be listening to
+                    {
+                        "type": "retrieved_data",  # This should match a method in your consumer
+                        "Existing_Data": existing_values,
+                    }
+                )
+                logger.info(f"async_to_sync was executed to send Retrieved Data to Django.\n")
+
+                logger.info(f"\nUpdating graph in DjangoDash with \n-file path: {file_path} \n-and channel: {channel}\n")
+                waveform_data = extract_waveform(file_path, channel) # Assume this function exists and works
+                plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
+                Title_Color = 'green'
+                logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
+                fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
+                return fig
+            
+            # Check if either file_path or channel is None or empty
+            else:
+                logger.info(f"\nNo valid file path or channel data received in DjangoDash: \n-file_path: '{file_path}' (type: {type(file_path)}) \n-and channel: '{channel}' (type: {type(channel)})\n")
+                waveform_data = []
+                Title_Color = 'orange'
+                plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
+                logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
+                fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+                return fig
+            
+    elif trigger_id in ('cancel-button', 'dummy-output'):
+        file_path = file_path_and_channel_data['File-path']
+        channel = file_path_and_channel_data['Channel']
+        
+        logger.info(f"\n update_graph is redrawing the graph on the request of \n\t{trigger_id}.\n")
+
+        # Use this later once everything is okay
+        # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
+        # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
+
+        # Check if either file_path or channel is None or empty
+
+        if file_path and channel:
+            existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+            logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
+
+            logger.info(f"\nUpdating graph in DjangoDash with \n-file path: {file_path} \n-and channel: {channel}\n")
+            waveform_data = extract_waveform(file_path, channel) # Assume this function exists and works
+            plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
+            Title_Color = 'green'
+            logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
+            fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
+            return fig
+        
+        # Check if either file_path or channel is None or empty
+        else:
+            logger.info(f"\nNo valid file path or channel data received in DjangoDash: \n-file_path: '{file_path}' (type: {type(file_path)}) \n-and channel: '{channel}' (type: {type(channel)})\n")
+            waveform_data = []
+            Title_Color = 'orange'
+            plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
+            logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
+            fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+            return fig
 
 # Callback to update click data store, clicks on the waveform for annotation
 @app.callback(
     Output('click-data', 'data'), # If you have a single output, please don't use []
     [Input('ecg-graph', 'clickData'),
      Input('FilePath_and_Channel', 'value'),
+     Input('No_FilePath_and_Channel', 'value'),
      Input('Button_Action', 'value'),
      Input('cancel-button', 'n_clicks')],
     State('click-data', 'data'),
     prevent_initial_call=True
 )
-def store_click_data(click_data, file_path_and_channel_data, Action_var, cancel_clicks, clicks, callback_context):
-    logger.info(f"\n\n store_click_data callback triggered.\n")
-    logger.info(f"click_data: {click_data}\n")
-    logger.info(f"clicks: {clicks}\n")
+def store_click_data(click_data, file_path_and_channel_data, No_file_path_and_channel_data, Action_var, cancel_clicks, clicks, callback_context):
     trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]  # Identifies the input that triggered the callback
-    logger.info(f"Triggered by: {trigger_id}\n")
-    if trigger_id == 'FilePath_and_Channel':
+    logger.info(f"""
+                \n\n store_click_data callback triggered by: {trigger_id}\n
+                click_data: {click_data}\n
+                clicks: {clicks}\n
+                file_path_and_channel_data: {file_path_and_channel_data}\n
+                """)
+    
+    if trigger_id == 'No_FilePath_and_Channel':
+        logger.info(f"Resetting click-data to {str({'Indices': [], 'Manual': False})}.\n")
+        return {'Indices': [], 'Manual': False}
+            # raise PreventUpdate  # Prevent callback 
+
+    elif trigger_id == 'FilePath_and_Channel':
         file_path = file_path_and_channel_data['File-path']
         channel = file_path_and_channel_data['Channel']
         if file_path and channel:
@@ -206,10 +435,11 @@ def store_click_data(click_data, file_path_and_channel_data, Action_var, cancel_
                 start_end_indices = []
             logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
             # Add a flag to indicate that this update is programmatic
-            return {'Indices': start_end_indices, 'Manual': False}  # Update click-data and update prev_file_path_and_channel
+            return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
         else:
-            logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n")
-            raise PreventUpdate  # Prevent callback 
+            logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n\tresetting click-data to [].\n")
+            return {'Indices': [], 'Manual': False}
+            # raise PreventUpdate  # Prevent callback 
         
     elif trigger_id == 'Button_Action': # 'refresh' or 'undo'
         logger.info(f"\t\t\tConditional executed in store_click_data callback:\n\t\t\t\t\t\t-Action_var: {Action_var}\n")
@@ -271,187 +501,6 @@ def store_click_data(click_data, file_path_and_channel_data, Action_var, cancel_
         return clicks
     raise PreventUpdate
 #----------------------------------------------------------------------------------------------------------
-
-@app.callback(
-    Output('ecg-graph', 'figure'),
-    [Input('FilePath_and_Channel', 'value'),
-     Input('click-data', 'data'), 
-     Input('cancel-button', 'n_clicks'),
-     Input('dummy-output', 'data')], # Dummy input after the annotation is entered in the working csv file in handle_form_submission callback
-      State('Button_Action', 'value'),
-    # prevent_initial_call=False # Allow the initial call to trigger the callback 
-)
-def update_graph(file_path_and_channel_data, clicks, cancel_n_clicks, dummy_output, Action_var, callback_context):
-    if not callback_context.triggered:
-        logger.info(f"\n\n update_graph callback triggered for initialization of the Dashboard: \n\n")
-        waveform_data = []
-        Title_Color = 'orange'
-        plot_title = f"Initializing. No Data Available. Time: {str(datetime.datetime.now())}"
-        fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
-        return fig
-        # raise PreventUpdate
-    
-    trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]  # Identifies the input that triggered the callback
-    logger.info(f"\n\n update_graph callback triggered by trigger_id: \n\t{trigger_id}\n")
-
-    if trigger_id == 'FilePath_and_Channel':
-        file_path = file_path_and_channel_data['File-path']
-        channel = file_path_and_channel_data['Channel']
-        logger.info(f"\n update_graph received \n\t-file_path: '{file_path}' (type: {type(file_path)}) \n\t-and channel: '{channel}' (type: {type(channel)})\n")
-   
-        # Use this later once everything is okay
-        # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
-        # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
-
-        if file_path and channel:
-            existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
-            logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
-
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                "ecg_analysis_group",  # This is the group name that your consumer should be listening to
-                {
-                    "type": "retrieved_data",  # This should match a method in your consumer
-                    "Existing_Data": existing_values,
-                }
-            )
-            logger.info(f"async_to_sync was executed to send Retrieved Data to Django.\n")
-
-            logger.info(f"\nUpdating graph in DjangoDash with \n\t-file path: {file_path} \n\t-and channel: {channel}\n")
-            waveform_data = extract_waveform(file_path, channel) # Assume this function exists and works
-            plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
-            Title_Color = 'green'
-            logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
-            fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
-            return fig
-    
-        # Check if either file_path or channel is None or empty
-        else:
-            logger.info(f"\nNo valid file path or channel data received in DjangoDash: \n-file_path: '{file_path}' (type: {type(file_path)}) \n-and channel: '{channel}' (type: {type(channel)})\n")
-            waveform_data = []
-            Title_Color = 'orange'
-            plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
-            logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
-            fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
-            return fig
-
-    elif trigger_id == 'click-data':
-        if clicks['Manual']:
-            if clicks['Indices'] and len(clicks['Indices']) == 2:
-                file_path = file_path_and_channel_data['File-path']
-                channel = file_path_and_channel_data['Channel']
-
-                # Check if either file_path or channel is None or empty
-                if file_path and channel:
-                    logger.info(f"\nOn 2 clicks, updating graph in DjangoDash with \n-file path: {file_path} \n-and channel: {channel}\n")
-                    waveform_data = extract_waveform(file_path, channel) # Assume this function exists and works
-                    plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
-                    Title_Color = 'green'
-                    logger.info(f"\nOn 2 clicks, 'if condition': waveform_data length: {len(waveform_data)}\n")
-                    existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
-                    logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
-                    fig = plot_waveform(waveform_data, plot_title, Title_Color, existing_values=existing_values, click_data=clicks['Indices']) # Assume this function exists and works
-                    return fig
-            
-                else:
-                    logger.info(f"\nOn 2 clicks, no valid file path or channel data received in DjangoDash: \n-file_path: '{file_path}' (type: {type(file_path)}) \n-and channel: '{channel}' (type: {type(channel)})\n")
-                    waveform_data = [] # Assume this function exists and works
-                    Title_Color = 'orange'
-                    plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
-                    logger.info(f"\nOn 2 clicks, 'else condition': waveform_data length: {len(waveform_data)}\n")
-                    fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
-                    return fig
-            
-            else:
-                raise PreventUpdate
-        else:
-            file_path = file_path_and_channel_data['File-path']
-            channel = file_path_and_channel_data['Channel']
-            action_to_take = Action_var['Action']
-            
-            logger.info(f"\n update_graph is redrawing the graph on the request of \n\tAction '{action_to_take}' from {Action_var}\n")
-    
-            # Use this later once everything is okay
-            # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
-            # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
-
-            # Check if either file_path or channel is None or empty
-
-            if file_path and channel:
-                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
-                logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
-
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    "ecg_analysis_group",  # This is the group name that your consumer should be listening to
-                    {
-                        "type": "retrieved_data",  # This should match a method in your consumer
-                        "Existing_Data": existing_values,
-                    }
-                )
-                logger.info(f"async_to_sync was executed to send Retrieved Data to Django.\n")
-
-                logger.info(f"\nUpdating graph in DjangoDash with \n-file path: {file_path} \n-and channel: {channel}\n")
-                waveform_data = extract_waveform(file_path, channel) # Assume this function exists and works
-                plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
-                Title_Color = 'green'
-                logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
-                fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
-                return fig
-            
-            # Check if either file_path or channel is None or empty
-            else:
-                logger.info(f"\nNo valid file path or channel data received in DjangoDash: \n-file_path: '{file_path}' (type: {type(file_path)}) \n-and channel: '{channel}' (type: {type(channel)})\n")
-                waveform_data = []
-                Title_Color = 'orange'
-                plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
-                logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
-                fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
-                return fig
-            
-    elif trigger_id in ('cancel-button', 'dummy-output'):
-        file_path = file_path_and_channel_data['File-path']
-        channel = file_path_and_channel_data['Channel']
-        
-        logger.info(f"\n update_graph is redrawing the graph on the request of \n\t{trigger_id}.\n")
-
-        # Use this later once everything is okay
-        # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
-        # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
-
-        # Check if either file_path or channel is None or empty
-
-        if file_path and channel:
-            existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
-            logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
-
-            # channel_layer = get_channel_layer()
-            # async_to_sync(channel_layer.group_send)(
-            #     "ecg_analysis_group",  # This is the group name that your consumer should be listening to
-            #     {
-            #         "type": "retrieved_data",  # This should match a method in your consumer
-            #         "Existing_Data": existing_values,
-            #     }
-            # )
-            # logger.info(f"async_to_sync was executed to send Retrieved Data to Django.\n")
-
-            logger.info(f"\nUpdating graph in DjangoDash with \n-file path: {file_path} \n-and channel: {channel}\n")
-            waveform_data = extract_waveform(file_path, channel) # Assume this function exists and works
-            plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
-            Title_Color = 'green'
-            logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
-            fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
-            return fig
-        
-        # Check if either file_path or channel is None or empty
-        else:
-            logger.info(f"\nNo valid file path or channel data received in DjangoDash: \n-file_path: '{file_path}' (type: {type(file_path)}) \n-and channel: '{channel}' (type: {type(channel)})\n")
-            waveform_data = []
-            Title_Color = 'orange'
-            plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
-            logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
-            fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
-            return fig
 
 # Function to plot waveform data using Plotly
 def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_values=None, click_data=None):
