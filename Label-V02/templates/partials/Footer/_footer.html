@@ -30,6 +30,12 @@
         transition: transform 0.3s ease;
     }
 
+    .username-green {
+        /* color: green; */
+        color: blue;
+        font-weight: bold;
+    }
+
     .footer-button:last-child {
         margin-right: 0; /* No margin for the last button */
     }
@@ -75,32 +81,42 @@
 </footer>
 
 <script>
-    document.getElementById('undoButton').addEventListener('click', function() {
-        console.log('Undo button clicked');
-        console.log("   Dispatching 'buttonClick' event dispatched with action: 'undo'.");
-        document.dispatchEvent(new CustomEvent('buttonClick', { detail: { action: 'undo' } }));
-    });
+    document.addEventListener('DOMContentLoaded', function() {
+        // Listen for the 'Receive_data event' to get the username and update the logout button
+        document.addEventListener('Receive_data', function(event) {
+            const username = event.detail.User_name;
+            const logoutButton = document.getElementById('logoutButton');
+            logoutButton.innerHTML = `<strong>Logout <span class="username-green">${username}</span></strong>`;
+            console.log("   The Logout button was updated with the username included.");
+        });
 
-    document.getElementById('refreshButton').addEventListener('click', function() {
-        console.log('Refresh button clicked');
-        console.log("   Dispatching 'buttonClick' event dispatched with action: 'refresh'.");
-        document.dispatchEvent(new CustomEvent('buttonClick', { detail: { action: 'refresh' } }));
-    });
+        document.getElementById('undoButton').addEventListener('click', function() {
+            console.log('Undo button clicked');
+            console.log("   Dispatching 'buttonClick' event dispatched with action: 'undo'.");
+            document.dispatchEvent(new CustomEvent('buttonClick', { detail: { action: 'undo' } }));
+        });
 
-    document.getElementById('saveButton').addEventListener('click', function() {
-        console.log("Save button clicked");
-        console.log("   Dispatching 'buttonClick' event dispatched with action: 'save'.");
-        document.dispatchEvent(new CustomEvent('buttonClick', { detail: { action: 'save' } }));
-    });
+        document.getElementById('refreshButton').addEventListener('click', function() {
+            console.log('Refresh button clicked');
+            console.log("   Dispatching 'buttonClick' event dispatched with action: 'refresh'.");
+            document.dispatchEvent(new CustomEvent('buttonClick', { detail: { action: 'refresh' } }));
+        });
 
-    document.getElementById('AllSaveButton').addEventListener('click', function() {
-        console.log("'Save All' button clicked");
-        console.log("   Dispatching 'buttonClick' event dispatched with action: 'SaveAll'.");
-        document.dispatchEvent(new CustomEvent('buttonClick', { detail: { action: 'SaveAll' } }));
-    });
+        document.getElementById('saveButton').addEventListener('click', function() {
+            console.log("Save button clicked");
+            console.log("   Dispatching 'buttonClick' event dispatched with action: 'save'.");
+            document.dispatchEvent(new CustomEvent('buttonClick', { detail: { action: 'save' } }));
+        });
 
-    document.getElementById('logoutButton').addEventListener('click', function() {
-        console.log("'Logout' button clicked");
+        document.getElementById('AllSaveButton').addEventListener('click', function() {
+            console.log("'Save All' button clicked");
+            console.log("   Dispatching 'buttonClick' event dispatched with action: 'SaveAll'.");
+            document.dispatchEvent(new CustomEvent('buttonClick', { detail: { action: 'SaveAll' } }));
+        });
+
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            console.log("'Logout' button clicked");
+        });
     });
 </script>
 <!-- End of Footer -->

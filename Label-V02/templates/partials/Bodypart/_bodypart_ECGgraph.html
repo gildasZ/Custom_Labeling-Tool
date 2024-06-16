@@ -146,6 +146,11 @@
         const socket = new WebSocket('ws://' + window.location.host + '/ws/process-xml/'); // Establish WebSocket connection
         let absoluteFilePath = null; // Variable to hold the full path until the channel is selected
 
+        socket.onopen = function() {
+            console.log("WebSocket connection established.");
+            // Now you can send messages
+        };
+
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);
             console.log("@@@@Received Parsed data from Django:", data);  // Log parsed data to verify structure and content
@@ -180,9 +185,26 @@
                 console.log("Save_Feedback status received:", status);
                 // Pop up window handling
                 showAlert(status, message);
+            } else if (data.type === 'user_data') {
+                var user_name = data.User_name;
+                var user_id = data.User_id;
+                console.log("***Client received User data from Django:", data); // Debugging: log received data
+                // Log teh user name and ID
+                console.log("User_namee received:", user_name);
+                console.log("User_id received:", user_id);
+                // Dispatch the event with data for other components to use
+                document.dispatchEvent(new CustomEvent('Receive_data', { detail: data }));
             }
         }
 
+        socket.onerror = function(error) {
+            console.log("WebSocket error:", error);
+        };
+
+        socket.onclose = function() {
+            console.log("WebSocket connection closed.");
+        };
+        
         document.addEventListener('fileSelected', function(event) {
             if (absoluteFilePath !== event.detail.filePath) {
                 absoluteFilePath = event.detail.filePath; // Store (Update) the full path
@@ -228,7 +250,7 @@
             };
             // Send the data to the server via WebSocket
             socket.send(JSON.stringify(postData));
-            console.log("   Client sent the 'Refresh or Save or Undo or Save All' action to Django for processing,      action:", action_var); // Debugging: log file path being sent
+            console.log("   Client sent the 'Refresh or Save or Undo or Save All' action to Django for processing,      action:", action_var);
         });
     });
 </script>
