@@ -14,7 +14,7 @@ from pathlib import Path
 import os
 
 # Define a BASE_FILE_PATH that points to the directory where your files (XML files) are stored
-BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r" INSERT THE PATH OF THE ROOT DIRECTORY WHERE YOUR PLACED 'Testing_Folder_Filtered' ('Testing_Folder_Filtered' SHould not be included in the path and the path must not end with / or \) ")
+BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"C:\Users\gilda\OneDrive\Documents\_NYCU\Master's Thesis\LABORATORY\Labeling Tool")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -110,12 +110,12 @@ Don't forget to run these 2 oommand lines if you change the database:
      python manage.py migrate
 '''
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
 ''' 
 Here is a PostgreSQL database configuration.
@@ -124,15 +124,15 @@ Don't forget to run these 2 oommand lines if you change the database:
      python manage.py migrate
 '''
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'db_label_v02',
-#         'USER': 'postgres',
-#         'PASSWORD': '12345',
-#         'HOST': 'localhost', # It is marked as 'Server in SQL Shell
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'db_label_v02',
+        'USER': 'postgres',
+        'PASSWORD': '12345',
+        'HOST': 'localhost', # It is marked as 'Server in SQL Shell
+    }
+}
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 # Ensure the session cookie is not persistent

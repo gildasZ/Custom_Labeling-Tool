@@ -7,6 +7,7 @@ import asyncio
 from channels.generic.websocket import AsyncWebsocketConsumer
 from .utils import process_xml_data, convert_path, handle_annotation_to_csv
 from django_plotly_dash.consumers import async_send_to_pipe_channel
+from asgiref.sync import sync_to_async
 
 # Setup logger
 logger = logging.getLogger('home')
@@ -28,7 +29,8 @@ class ECGConsumer(AsyncWebsocketConsumer):
             self.past_action = None
 
             # Join the group that will receive messages from DjangoDash
-            self.User_id = self.user.username
+            self.User_name = self.user.username
+            self.User_id = self.user.id
 
             # Use this later
 
@@ -42,10 +44,22 @@ class ECGConsumer(AsyncWebsocketConsumer):
             #     'count_number_empty_channel': 0
             # }
 
-            self.group_name = f"ecg_analysis_{self.User_id}"
+            self.group_name = f"ecg_analysis_{self.User_name}"
             await self.channel_layer.group_add(self.group_name, self.channel_name)
+
+            # # Save the user ID in the session asynchronously
+            # self.scope['session']['user_id'] = self.user.id
+            # await sync_to_async(self.scope['session'].save)()
+            
             try:
                 await self.accept()
+                # Send user data upon connection
+                await self.send(text_data=json.dumps({
+                    'type': 'user_data',
+                    'User_name': self.User_name,
+                    'User_id': self.User_id,
+                }))
+                logger.info(f"\n----- Django sent to the client: \nUser_name: {self.User_name}, \nUser_id: {self.User_id}\n")
             except asyncio.CancelledError:
                 await self.close(code=1001)  # Indicates that the server is shutting down
 
@@ -62,12 +76,12 @@ class ECGConsumer(AsyncWebsocketConsumer):
             # Sending message to Pipe in DjangoDash ###################################
             
             # Send the User ID to Pipe
-            Data_to_Send = {'User_id': self.User_id}
+            Data_to_Send = {'User_id': self.User_name}
             await async_send_to_pipe_channel(
                         channel_name = 'User_id_channel',  # Fixed channel name for the first pipe
                         label = 'User_id_Label',  # Fixed label for the first pipe
                         value = Data_to_Send)
-            logger.info(f"\n+++++ Django sent Message Channel data to dpd.Pipe: {Data_to_Send}")
+            logger.info(f"\n+++++ Django sent Message Channel data to dpd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}")
             
             # Sending empty data to Pipe
             if self.count_number_empty_channel == 0:
@@ -75,18 +89,17 @@ class ECGConsumer(AsyncWebsocketConsumer):
             else:
                 self.count_number_empty_channel = 0
             counting = self.count_number_empty_channel
-            Data_to_Send = {'No_Count': counting}
+            Data_to_Send = {'No_Count': counting, 'User_id': self.User_name}
             await async_send_to_pipe_channel(
                         channel_name = 'Empty_Django_Message_Channel',  # Fixed channel name for the first pipe
                         label = 'No_Path_and_Channel_label',  # Fixed label for the first pipe
                         value = Data_to_Send)
-            
             # Data_to_Send = {'File-path': None, 'Channel': None}
             # await async_send_to_pipe_channel(
             #             channel_name = 'Receive_Django_Message_Channel',  # Fixed channel name for the second pipe
             #             label = 'Path_and_Channel_label',  # Fixed label for the second pipe
             #             value = Data_to_Send)
-            logger.info(f"\n+++++ Django sent empty Message Channel data to dpd.Pipe: {Data_to_Send}")
+            logger.info(f"\n+++++ Django sent empty Message Channel data to dpd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}")
 
             response = process_xml_data(data['filePath'])
             if 'error' in response:
@@ -112,7 +125,7 @@ class ECGConsumer(AsyncWebsocketConsumer):
                         channel_name = 'Channels_Extracted',  # Fixed channel name for the second pipe
                         label = 'All-Channels',  # Fixed label for the second pipe
                         value = Data_to_Send)
-                logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}")
+                logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}")
 
             # Store the current file path in the instance variable
             self.current_file_path = convert_path(html.unescape(data['filePath']))
@@ -130,7 +143,7 @@ class ECGConsumer(AsyncWebsocketConsumer):
                         channel_name = 'Receive_Django_Message_Channel',  # Fixed channel name for the second pipe
                         label = 'Path_and_Channel_label',  # Fixed label for the second pipe
                         value = Data_to_Send)
-            logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}")
+            logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}")
 
             # Update reset condition on receiving a new file path
             self.handle_condition = True
@@ -154,7 +167,7 @@ class ECGConsumer(AsyncWebsocketConsumer):
                                 channel_name = 'This_Action_Channel',  # Fixed channel name for the second pipe
                                 label = 'This_Action',  # Fixed label for the second pipe
                                 value = Data_to_Send)
-                    logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}")
+                    logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}")
 
             elif action_var == 'save':
                 logger.info(f"\t\t\tConditional executed:\n\t\t\t\t\t\t-Action_var: {action_var}\n")

@@ -32,8 +32,6 @@ def welcome(request):
     logger.info("The welcome function ran successfully.\t\t\t\t, and welcome.html is running!\n")
     return render(request, 'home/welcome.html', context)
 
-
-
 # Registration view
 def register(request):
     if request.method == 'POST':
