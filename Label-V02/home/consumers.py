@@ -59,7 +59,7 @@ class ECGConsumer(AsyncWebsocketConsumer):
                     'User_name': self.User_name,
                     'User_id': self.User_id,
                 }))
-                logger.info(f"\n----- Django sent to the client: \nUser_name: {self.User_name}, \nUser_id: {self.User_id}\n")
+                logger.info(f"\n----- Django sent to the client: \n\tUser_name: {self.User_name}, \n\tUser_id: {self.User_id}\n")
             except asyncio.CancelledError:
                 await self.close(code=1001)  # Indicates that the server is shutting down
 
@@ -78,10 +78,10 @@ class ECGConsumer(AsyncWebsocketConsumer):
             # Send the User ID to Pipe
             Data_to_Send = {'User_id': self.User_name}
             await async_send_to_pipe_channel(
-                        channel_name = 'User_id_channel',  # Fixed channel name for the first pipe
-                        label = 'User_id_Label',  # Fixed label for the first pipe
+                        channel_name = 'User_data_channel',  # Fixed channel name for the first pipe
+                        label = 'User_data_Label',  # Fixed label for the first pipe
                         value = Data_to_Send)
-            logger.info(f"\n+++++ Django sent Message Channel data to dpd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}")
+            logger.info(f"\n+++++ Django sent Message Channel data to dpd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}\n\tin conditional if data['type'] == 'processXML'")
             
             # Sending empty data to Pipe
             if self.count_number_empty_channel == 0:
@@ -136,6 +136,15 @@ class ECGConsumer(AsyncWebsocketConsumer):
         elif data['type'] == 'DashDisplayWaveform':
             path_variable = convert_path(html.unescape(data['fullFilePath']))
             logger.info(f"\nDjango received \n-full file path: {path_variable} \n-and selected channel: {data['channel']}\n")
+
+            
+            # Send the User ID to Pipe
+            Data_to_Send = {'User_id': self.User_name}
+            await async_send_to_pipe_channel(
+                        channel_name = 'User_data_channel',  # Fixed channel name for the first pipe
+                        label = 'User_data_Label',  # Fixed label for the first pipe
+                        value = Data_to_Send)
+            logger.info(f"\n+++++ Django sent Message Channel data to dpd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}\n\tin conditional elif data['type'] == 'DashDisplayWaveform'")
 
             # Sending message to Pipe in DjangoDash 
             Data_to_Send = {'File-path': path_variable, 'Channel': data['channel']}

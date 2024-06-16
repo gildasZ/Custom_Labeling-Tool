@@ -49,8 +49,8 @@ app.layout = html.Div([
                                     ), # Think about removing this style later
     dpd.Pipe(id='session_user_id',    # ID in callback
             value = {'User_id': None},
-            label='User_id_Label',                 # Label used to identify relevant messages
-            channel_name='User_id_channel'), # Channel whose messages are to be examined
+            label='User_data_Label',                 # Label used to identify relevant messages
+            channel_name='User_data_channel'), # Channel whose messages are to be examined
     dpd.Pipe(id='No_FilePath_and_Channel',    # ID in callback
             value = {'No_Count': None, 'User_id': None},
             label='No_Path_and_Channel_label',                      # Label used to identify relevant messages
@@ -145,6 +145,7 @@ def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, 
     if not callback_context.triggered:
         raise PreventUpdate  # Prevent callback if no input has triggered it
     
+    # Only proceed if the (stored_user_name and pipe_user_name == stored_user_name)
     pipe_user_name = user_id_pipe['User_id']
     stored_user_name = stored_user_data_pipe['User_name']
     if stored_user_name and pipe_user_name == stored_user_name:
@@ -212,11 +213,19 @@ def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, 
     [Input('submit-button', 'n_clicks'),
      Input('cancel-button', 'n_clicks'),
      Input('annotation-input', 'n_submit'),],  # Handle 'Enter' button to trigger 'Submit'
+    [State('session_user_id', 'value'), 
+     State('store_session_user_data', 'data')],
     prevent_initial_call=True
 )
-def clear_input(submit_clicks, cancel_clicks, enter_pressed):
-    logger.info(f"\n\n clear_input callback triggered.\n\n")
-    return ""  # Clear the input field
+def clear_input(submit_clicks, cancel_clicks, enter_pressed, user_id_pipe, stored_user_data_pipe):
+    # Only proceed if the (stored_user_name and pipe_user_name == stored_user_name)
+    pipe_user_name = user_id_pipe['User_id']
+    stored_user_name = stored_user_data_pipe['User_name']
+    if stored_user_name and pipe_user_name == stored_user_name:
+        logger.info(f"\n\n clear_input callback triggered.\n\n")
+        return ""  # Clear the input field
+    else:
+        raise PreventUpdate
 
 # This callback will manage the appearance of the annotation area
 @app.callback(
@@ -225,27 +234,36 @@ def clear_input(submit_clicks, cancel_clicks, enter_pressed):
      Input('submit-button', 'n_clicks'), 
      Input('cancel-button', 'n_clicks'),
      Input('annotation-input', 'n_submit')], # Handle 'Enter' button to trigger 'Submit'
-    [State('input-modal', 'style')],
+    [State('input-modal', 'style'),
+     State('session_user_id', 'value'), 
+     State('store_session_user_data', 'data')],
     prevent_initial_call=True
 )
-def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, enter_pressed, style, callback_context):
+def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, enter_pressed, style, user_id_pipe, stored_user_data_pipe, callback_context):
     # logger.info(f"\ncallback_context: \n{callback_context}\n")
     if not callback_context.triggered:
         raise PreventUpdate  # Prevent callback if no input has triggered it
-    button_id = callback_context.triggered[0]['prop_id'].split('.')[0]
-    logger.info(f"""
-                \n\ntoggle_modal callback triggered by: {button_id}\n
-                clicks: {clicks}\n
-                submit_n_clicks: {submit_n_clicks}\n
-                cancel_n_clicks: {cancel_n_clicks}\n
-                enter_pressed: {enter_pressed}\n
-                """)
-    if button_id == 'click-data' and clicks['Indices'] and clicks['Manual'] and len(clicks['Indices']) == 2:
-        style['display'] = 'block'  # Show modal
-    elif button_id in ('submit-button', 'cancel-button', 'annotation-input'):
-        style['display'] = 'none'   # Hide modal
-    logger.info(f"\n\t toggle_modal finished running.\n")
-    return style
+    
+    # Only proceed if the (stored_user_name and pipe_user_name == stored_user_name)
+    pipe_user_name = user_id_pipe['User_id']
+    stored_user_name = stored_user_data_pipe['User_name']
+    if stored_user_name and pipe_user_name == stored_user_name:
+        button_id = callback_context.triggered[0]['prop_id'].split('.')[0]
+        logger.info(f"""
+                    \n\ntoggle_modal callback triggered by: {button_id}\n
+                    clicks: {clicks}\n
+                    submit_n_clicks: {submit_n_clicks}\n
+                    cancel_n_clicks: {cancel_n_clicks}\n
+                    enter_pressed: {enter_pressed}\n
+                    """)
+        if button_id == 'click-data' and clicks['Indices'] and clicks['Manual'] and len(clicks['Indices']) == 2:
+            style['display'] = 'block'  # Show modal
+        elif button_id in ('submit-button', 'cancel-button', 'annotation-input'):
+            style['display'] = 'none'   # Hide modal
+        logger.info(f"\n\t toggle_modal finished running.\n")
+        return style
+    else:
+        raise PreventUpdate
 
 @app.callback(
     Output('ecg-graph', 'figure'),
@@ -278,6 +296,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                     Button_Action: {Action_var}\n
                     """)
         return fig
+    
     # Only proceed if the (stored_user_name and pipe_user_name == stored_user_name)
     pipe_user_name = user_id_pipe['User_id']
     stored_user_name = stored_user_data_pipe['User_name']
@@ -486,6 +505,8 @@ def store_click_data(click_data, file_path_and_channel_data, No_file_path_and_ch
                 clicks: {clicks}\n
                 file_path_and_channel_data: {file_path_and_channel_data}\n
                 """)
+    
+    # Only proceed if the (stored_user_name and pipe_user_name == stored_user_name)
     pipe_user_name = user_id_pipe['User_id']
     stored_user_name = stored_user_data_pipe['User_name']
     if stored_user_name and pipe_user_name == stored_user_name:
