@@ -46,6 +46,8 @@ Before running the WebApp, you need to set up your environment:
   
      ```python
      BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"INSERT YOUR PATH HERE")
+     # Example
+     # BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"C:\Users\gildasZ\OneDrive\Documents\LABORATORY\Testing GitHub\Custom_Labeling-Tool")
      ```
 
 4. **Virtual Environment:**
