@@ -2,17 +2,14 @@
 # home/dash_apps/finished_apps/display_ecg_graph.py
 import logging
 import datetime
-import requests
 import dpd_components as dpd
 import plotly.graph_objs as go
 from lxml import etree
-from flask import request as flask_request
 from dash import dcc, html, Output, Input, State
 from django_plotly_dash import DjangoDash
 from dash.exceptions import PreventUpdate
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from django.contrib.sessions.models import Session
 from home.utils import handle_annotation_to_csv
 
 # Setup logger
@@ -77,7 +74,20 @@ app.layout = html.Div([
         id='input-modal',
         children=[
             html.P("Enter your annotation:"),
-            dcc.Input(id='annotation-input', type='text', placeholder="Type here...", n_submit=0),
+            # dcc.Input(id='annotation-input', type='text', placeholder="Type here...", n_submit=0),
+            dcc.Dropdown(id='annotation-input', options=[
+                {'label': 'QRS wave (duration, pattern)', 'value': 'QRS wave (duration, pattern)'},
+                {'label': 'Baseline', 'value': 'Baseline'},
+                {'label': 'P-wave', 'value': 'P-wave'},
+                {'label': 'PR interval', 'value': 'PR interval'},
+                {'label': 'Q-wave', 'value': 'Q-wave'},
+                {'label': 'R-wave', 'value': 'R-wave'},
+                {'label': 'S-wave', 'value': 'S-wave'},
+                {'label': 'J-point (End point of QRS)', 'value': 'J-point (End point of QRS)'},
+                {'label': 'ST segment', 'value': 'ST segment'},
+                {'label': 'T-wave', 'value': 'T-wave'},
+                {'label': 'RR interval', 'value': 'RR interval'},
+            ], placeholder="Select an annotation..."),
             html.Button('Submit', id='submit-button', n_clicks=0),
             html.Button('Cancel', id='cancel-button', n_clicks=0)
         ],
@@ -130,8 +140,7 @@ def store_user_specific_info(user_id_pipe, stored_user_data_pipe, callback_conte
 # This callback is supposed to manage the sending of information to Django side, inside the ECGConsumer consummer
 @app.callback(
     Output('dummy-output', 'data'),  # Add a dummy output
-    [Input('submit-button', 'n_clicks'),
-     Input('annotation-input', 'n_submit')], # Handle 'Enter' button to trigger 'Submit'
+    [Input('submit-button', 'n_clicks')], 
     [State('annotation-input', 'value'),
      State('click-data', 'data'),
      State('FilePath_and_Channel', 'value'),
@@ -140,7 +149,7 @@ def store_user_specific_info(user_id_pipe, stored_user_data_pipe, callback_conte
      State('store_session_user_data', 'data')], 
     prevent_initial_call=True
 )
-def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, file_path_and_channel_data, channels_data, user_id_pipe, stored_user_data_pipe, callback_context):
+def handle_form_submission(submit_n_clicks, input_value, clicks, file_path_and_channel_data, channels_data, user_id_pipe, stored_user_data_pipe, callback_context):
     logger.info(f"\n\n********handle_form_submission callback triggered.\n")
     if not callback_context.triggered:
         raise PreventUpdate  # Prevent callback if no input has triggered it
@@ -211,13 +220,12 @@ def handle_form_submission(submit_n_clicks, enter_pressed, input_value, clicks, 
 @app.callback(
     Output('annotation-input', 'value'),
     [Input('submit-button', 'n_clicks'),
-     Input('cancel-button', 'n_clicks'),
-     Input('annotation-input', 'n_submit'),],  # Handle 'Enter' button to trigger 'Submit'
+     Input('cancel-button', 'n_clicks')], 
     [State('session_user_id', 'value'), 
      State('store_session_user_data', 'data')],
     prevent_initial_call=True
 )
-def clear_input(submit_clicks, cancel_clicks, enter_pressed, user_id_pipe, stored_user_data_pipe):
+def clear_input(submit_clicks, cancel_clicks, user_id_pipe, stored_user_data_pipe):
     # Only proceed if the (stored_user_name and pipe_user_name == stored_user_name)
     pipe_user_name = user_id_pipe['User_id']
     stored_user_name = stored_user_data_pipe['User_name']
@@ -226,20 +234,19 @@ def clear_input(submit_clicks, cancel_clicks, enter_pressed, user_id_pipe, store
         return ""  # Clear the input field
     else:
         raise PreventUpdate
-
+    
 # This callback will manage the appearance of the annotation area
 @app.callback(
     Output('input-modal', 'style'),
     [Input('click-data', 'data'), 
      Input('submit-button', 'n_clicks'), 
-     Input('cancel-button', 'n_clicks'),
-     Input('annotation-input', 'n_submit')], # Handle 'Enter' button to trigger 'Submit'
+     Input('cancel-button', 'n_clicks')], 
     [State('input-modal', 'style'),
      State('session_user_id', 'value'), 
      State('store_session_user_data', 'data')],
     prevent_initial_call=True
 )
-def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, enter_pressed, style, user_id_pipe, stored_user_data_pipe, callback_context):
+def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, style, user_id_pipe, stored_user_data_pipe, callback_context):
     # logger.info(f"\ncallback_context: \n{callback_context}\n")
     if not callback_context.triggered:
         raise PreventUpdate  # Prevent callback if no input has triggered it
@@ -254,7 +261,6 @@ def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, enter_pressed, style,
                     clicks: {clicks}\n
                     submit_n_clicks: {submit_n_clicks}\n
                     cancel_n_clicks: {cancel_n_clicks}\n
-                    enter_pressed: {enter_pressed}\n
                     """)
         if button_id == 'click-data' and clicks['Indices'] and clicks['Manual'] and len(clicks['Indices']) == 2:
             style['display'] = 'block'  # Show modal
@@ -265,6 +271,7 @@ def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, enter_pressed, style,
     else:
         raise PreventUpdate
 
+# This callback will update the DjangoDash app
 @app.callback(
     Output('ecg-graph', 'figure'),
     [Input('FilePath_and_Channel', 'value'),
@@ -773,6 +780,21 @@ def extract_waveform(xml_file_path, target_channel):
 
 # Function to select the color
 def select_segment_color(sanitized_input):
+    # List of options
+    options = [
+        'QRS wave (duration, pattern)',
+        'Baseline',
+        'P-wave',
+        'PR interval',
+        'Q-wave',
+        'R-wave',
+        'S-wave',
+        'J-point (End point of QRS)',
+        'ST segment',
+        'T-wave',
+        'RR interval'
+    ]
+
     # List of colors
     colors = [
         "#ff7f0e",  # orange
@@ -784,22 +806,31 @@ def select_segment_color(sanitized_input):
         "#bcbd22",  # yellow-green
         "#17becf",  # cyan
         "#1a55FF",  # deep blue
-        "#db7100"   # dark orange
+        "#db7100",  # dark orange
+        "#ffbb78",  # light orange
+        # "#ff9896",  # light red
+        # "#c5b0d5",  # light purple
+        # "#c49c94",  # light brown
+        # "#f7b6d2",  # light pink
+        # "#c7c7c7",  # light gray
+        # "#dbdb8d",  # light yellow-green
+        # "#9edae5",  # light cyan
+        # "#aec7e8"   # light blue
     ]
+
     # Default color
     # default_color = "#4fa1ee"
     default_color = "#9467bd" # purple
+
+    # Ensure the list of colors is at least as long as the list of options
+    assert len(colors) >= len(options), "Not enough colors provided for the options"
     
     try:
-        # Attempt to convert the input to an integer
-        input_as_int = int(sanitized_input)
-        # Check if the integer is within the valid range
-        if 0 <= input_as_int < len(colors):
-            return colors[input_as_int]
+        # Get the index of the selected option 
+        index = options.index(sanitized_input)
+        # Return the corresponding color
+        return colors[index]
     except ValueError:
-        # If conversion fails, fall back to the default color
-        pass
-
-    # Return the default color if the input is not a valid integer
-    return default_color
+        # If the input is not in the options list, fall back to the default color
+        return default_color
     
