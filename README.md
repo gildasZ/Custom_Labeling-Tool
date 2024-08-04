@@ -118,6 +118,9 @@ Before running the WebApp, you need to set up your environment:
      python manage.py collectstatic
      ```
 
+6. **Placement of the custom list of labels:** 
+You need to replace the custom labels file named Testing_existence.csv in the project directory, which is called Label-V02. Ensure that you follow the format of the existing file.
+
 ## Running the Application
 
 To run the application, execute the following command:
