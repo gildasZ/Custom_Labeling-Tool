@@ -65,6 +65,7 @@ Before running the WebApp, you need to set up your environment:
      ```
 
 6. **Database Setup:**
+
    You have two options for setting up the database: using PostgreSQL or the default SQLite.
 
    **Option 1: PostgreSQL**
@@ -119,6 +120,7 @@ Before running the WebApp, you need to set up your environment:
      ```
 
 6. **Placement of the custom list of labels:** 
+
 You need to replace the custom labels file named Testing_existence.csv in the project directory, which is called Label-V02. Ensure that you follow the format of the existing file.
 
 ## Running the Application
