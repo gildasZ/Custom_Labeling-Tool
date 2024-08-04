@@ -1,5 +1,7 @@
 
 # home/dash_apps/finished_apps/display_ecg_graph.py
+import csv
+import os
 import logging
 import datetime
 import dpd_components as dpd
@@ -12,10 +14,45 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from home.utils import handle_annotation_to_csv
 
+
 # Setup logger
 logger = logging.getLogger('home')
 
 logger.info(f"display_ecg_graph.py started running!") # Checking how many times the whole code reruns.
+
+# This is just the default list of labels that will be used if 
+# no "Testing_existence.csv" is placed in the project directory 'Label-V02'
+labels_list = [
+                {'label': 'QRS wave (duration, pattern)', 'value': 'QRS wave (duration, pattern)'},
+                {'label': 'Baseline', 'value': 'Baseline'},
+                {'label': 'P-wave', 'value': 'P-wave'},
+                {'label': 'PR interval', 'value': 'PR interval'},
+                {'label': 'Q-wave', 'value': 'Q-wave'},
+                {'label': 'R-wave', 'value': 'R-wave'},
+                {'label': 'S-wave', 'value': 'S-wave'},
+                {'label': 'J-point (End point of QRS)', 'value': 'J-point (End point of QRS)'},
+                {'label': 'ST segment', 'value': 'ST segment'},
+                {'label': 'T-wave', 'value': 'T-wave'},
+                {'label': 'RR interval', 'value': 'RR interval'},
+            ]
+
+def get_list_of_labels():
+    file_path = "Testing_existence.csv"
+    
+    if not os.path.exists(file_path):
+        with open(file_path, mode='w', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=['label', 'value'])
+            writer.writeheader()
+            for label in labels_list:
+                writer.writerow(label)
+    
+    labels_list_read = []
+    with open(file_path, mode='r', newline='') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            labels_list_read.append({'label': row['label'], 'value': row['value']})
+    
+    return labels_list_read
 
 # Dash app initialization
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -75,19 +112,21 @@ app.layout = html.Div([
         children=[
             html.P("Enter your annotation:"),
             # dcc.Input(id='annotation-input', type='text', placeholder="Type here...", n_submit=0),
-            dcc.Dropdown(id='annotation-input', options=[
-                {'label': 'QRS wave (duration, pattern)', 'value': 'QRS wave (duration, pattern)'},
-                {'label': 'Baseline', 'value': 'Baseline'},
-                {'label': 'P-wave', 'value': 'P-wave'},
-                {'label': 'PR interval', 'value': 'PR interval'},
-                {'label': 'Q-wave', 'value': 'Q-wave'},
-                {'label': 'R-wave', 'value': 'R-wave'},
-                {'label': 'S-wave', 'value': 'S-wave'},
-                {'label': 'J-point (End point of QRS)', 'value': 'J-point (End point of QRS)'},
-                {'label': 'ST segment', 'value': 'ST segment'},
-                {'label': 'T-wave', 'value': 'T-wave'},
-                {'label': 'RR interval', 'value': 'RR interval'},
-            ], placeholder="Select an annotation..."),
+            dcc.Dropdown(id='annotation-input', 
+                        #  options=[{'label': 'QRS wave (duration, pattern)', 'value': 'QRS wave (duration, pattern)'},
+                        #         {'label': 'Baseline', 'value': 'Baseline'},
+                        #         {'label': 'P-wave', 'value': 'P-wave'},
+                        #         {'label': 'PR interval', 'value': 'PR interval'},
+                        #         {'label': 'Q-wave', 'value': 'Q-wave'},
+                        #         {'label': 'R-wave', 'value': 'R-wave'},
+                        #         {'label': 'S-wave', 'value': 'S-wave'},
+                        #         {'label': 'J-point (End point of QRS)', 'value': 'J-point (End point of QRS)'},
+                        #         {'label': 'ST segment', 'value': 'ST segment'},
+                        #         {'label': 'T-wave', 'value': 'T-wave'},
+                        #         {'label': 'RR interval', 'value': 'RR interval'},],
+                        # options= labels_list,
+                        options= get_list_of_labels(),
+                        placeholder="Select an annotation..."),
             html.Button('Submit', id='submit-button', n_clicks=0),
             html.Button('Cancel', id='cancel-button', n_clicks=0)
         ],
@@ -781,19 +820,24 @@ def extract_waveform(xml_file_path, target_channel):
 # Function to select the color
 def select_segment_color(sanitized_input):
     # List of options
-    options = [
-        'QRS wave (duration, pattern)',
-        'Baseline',
-        'P-wave',
-        'PR interval',
-        'Q-wave',
-        'R-wave',
-        'S-wave',
-        'J-point (End point of QRS)',
-        'ST segment',
-        'T-wave',
-        'RR interval'
-    ]
+    # options = [
+    #     'QRS wave (duration, pattern)',
+    #     'Baseline',
+    #     'P-wave',
+    #     'PR interval',
+    #     'Q-wave',
+    #     'R-wave',
+    #     'S-wave',
+    #     'J-point (End point of QRS)',
+    #     'ST segment',
+    #     'T-wave',
+    #     'RR interval'
+    # ]
+    options = get_list_of_labels()
+
+    options = [item['value'] for item in options]
+
+    print(f"\nList of Options was extracted: \n{options}\n")
 
     # List of colors
     colors = [
@@ -808,14 +852,14 @@ def select_segment_color(sanitized_input):
         "#1a55FF",  # deep blue
         "#db7100",  # dark orange
         "#ffbb78",  # light orange
-        # "#ff9896",  # light red
-        # "#c5b0d5",  # light purple
-        # "#c49c94",  # light brown
-        # "#f7b6d2",  # light pink
-        # "#c7c7c7",  # light gray
-        # "#dbdb8d",  # light yellow-green
-        # "#9edae5",  # light cyan
-        # "#aec7e8"   # light blue
+        "#ff9896",  # light red
+        "#c5b0d5",  # light purple
+        "#c49c94",  # light brown
+        "#f7b6d2",  # light pink
+        "#c7c7c7",  # light gray
+        "#dbdb8d",  # light yellow-green
+        "#9edae5",  # light cyan
+        "#aec7e8"   # light blue
     ]
 
     # Default color
