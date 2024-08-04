@@ -41,7 +41,7 @@ Before running the WebApp, you need to set up your environment:
       ```
 
 3. **Setting the Base File Path:**
-   - Navigate to `settings.py` in the `label_V02` folder within the `Label_V02` project directory.
+   - Navigate to `settings.py` in the `label_V02` folder within the `Label-V02` project directory.
    - Update the `BASE_FILE_PATH` variable with the root directory path where you've placed the folder `Testing_Folder_Filtered`. Make sure this path does not include 'Testing_Folder_Filtered' itself and does not end with a `/` or `\`.
   
      ```python
@@ -51,7 +51,7 @@ Before running the WebApp, you need to set up your environment:
      ```
 
 4. **Virtual Environment:**
-   - Create a new virtual environment in the `Label_V02` project folder.
+   - Create a new virtual environment in the `Label-V02` project folder.
    - Activate the virtual environment. If you're using pipenv, the commands are:
      ```bash
      cd Label-V02  # Navigate into the project folder
