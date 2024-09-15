@@ -137,7 +137,7 @@ app.layout = html.Div([
 
 #----------------------------------------------------------------------------------------------------------
 
-# This callback is the helping piece to have user specific DjangoDash app updates by the update_graph callback and others. 
+# This callback is the helping piece to have user specific DjangoDash app updates by the update_graph callback and other callbacks. 
 # Otherwise all the instances of the DjangoDash App for all users will be updated anythime the callback is triggered by any user.
 
 # Later see if you can make it that it also isolates work in different browsers or tab too if possible for the same user.
@@ -310,6 +310,123 @@ def toggle_modal(clicks, submit_n_clicks, cancel_n_clicks, style, user_id_pipe, 
     else:
         raise PreventUpdate
 
+# Callback to update click data store, clicks on the waveform for annotation
+@app.callback(
+    Output('click-data', 'data'), # If you have a single output, please don't use []
+    [Input('ecg-graph', 'clickData'),
+     Input('FilePath_and_Channel', 'value'),
+     Input('No_FilePath_and_Channel', 'value'),
+     Input('Button_Action', 'value'),
+     Input('cancel-button', 'n_clicks')],
+    [State('click-data', 'data'), 
+     State('session_user_id', 'value'),
+     State('store_session_user_data', 'data')],
+    prevent_initial_call=True
+)
+def store_click_data(click_data, file_path_and_channel_data, No_file_path_and_channel_data, Action_var, cancel_clicks, clicks, user_id_pipe, stored_user_data_pipe, callback_context):
+    trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]  # Identifies the input that triggered the callback
+    logger.info(f"""
+                \n\n store_click_data callback triggered by: {trigger_id}\n
+                click_data: {click_data}\n
+                clicks: {clicks}\n
+                file_path_and_channel_data: {file_path_and_channel_data}\n
+                """)
+    
+    # Only proceed if the (stored_user_name and pipe_user_name == stored_user_name)
+    pipe_user_name = user_id_pipe['User_id']
+    stored_user_name = stored_user_data_pipe['User_name']
+    if stored_user_name and pipe_user_name == stored_user_name:
+            
+        if trigger_id == 'No_FilePath_and_Channel':
+            logger.info(f"Resetting click-data to {str({'Indices': [], 'Manual': False})}.\n")
+            return {'Indices': [], 'Manual': False}
+                # raise PreventUpdate  # Prevent callback 
+
+        elif trigger_id == 'FilePath_and_Channel':
+            file_path = file_path_and_channel_data['File-path']
+            channel = file_path_and_channel_data['Channel']
+            if file_path and channel:
+                logger.info(f"New file path and channel data received, resetting click-data.\n")
+                # Return the start and end indices of the last dictionary
+                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+                if existing_values:
+                    last_item = existing_values[-1]
+                    start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
+                else:
+                    start_end_indices = []
+                logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
+                # Add a flag to indicate that this update is programmatic
+                return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
+            else:
+                logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n\tresetting click-data to [].\n")
+                return {'Indices': [], 'Manual': False}
+                # raise PreventUpdate  # Prevent callback 
+            
+        elif trigger_id == 'Button_Action': # 'refresh' or 'undo'
+            logger.info(f"\t\t\tConditional executed in store_click_data callback:\n\t\t\t\t\t\t-Action_var: {Action_var}\n")
+            file_path = file_path_and_channel_data['File-path']
+            channel = file_path_and_channel_data['Channel']
+            action_to_take = Action_var['Action']
+            if file_path and channel:
+                # Handle 'refresh' or 'undo' action
+                handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do=action_to_take)
+                # Retrieve existing data
+                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+                if existing_values:
+                    last_item = existing_values[-1]
+                    start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
+                else:
+                    start_end_indices = []
+                logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
+                # Add a flag to indicate that this update is programmatic
+                return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
+            else:
+                logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n\t...\n")
+                raise PreventUpdate  # Prevent callback 
+        
+        elif trigger_id == 'cancel-button': 
+            logger.info(f"\t\t\tConditional executed in store_click_data callback:\n\t\t\t\t\t\t-Cancellation by: {cancel_clicks}\n")
+            file_path = file_path_and_channel_data['File-path']
+            channel = file_path_and_channel_data['Channel']
+            if file_path and channel:
+                # Retrieve existing data
+                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
+                if existing_values:
+                    last_item = existing_values[-1]
+                    start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
+                else:
+                    start_end_indices = []
+                logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
+                # Add a flag to indicate that this update is programmatic
+                return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
+            else:
+                logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n\t...\n")
+                raise PreventUpdate  # Prevent callback 
+        
+        # And for trigger_id == 'ecg-graph':
+        if click_data:
+            clicks['Manual'] = True
+            x_click = click_data['points'][0]['x']
+            logger.info(f"\nx_click: {x_click}\n")
+            # button_click = click_data['points'][0].get('button', 0)  # Default to 0 (left click) if 'button' key is not found
+            # logger.info(f"x_click: {x_click}, button_click: {button_click}\n")
+            # Check if there are already 2 numbers in 'Indices'
+            if len(clicks['Indices']) == 2:
+                logger.info("Two indices already present. Resetting the list.")
+                clicks['Indices'] = []  # Empty the indices list
+            
+            # Add the new x_click to Indices
+            clicks['Indices'].append(x_click)
+
+            # If we now have 2 values in Indices, sort them before returning
+            if len(clicks['Indices']) == 2:
+                clicks['Indices'].sort()
+                logger.info(f"Indices sorted: {clicks['Indices']}")
+            return clicks
+        raise PreventUpdate
+    else:
+        raise PreventUpdate
+
 # This callback will update the DjangoDash app
 @app.callback(
     Output('ecg-graph', 'figure'),
@@ -369,7 +486,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
         if user_id == No_file_path_and_channel_data['User_id']:
             logger.info(f"The user specific coondition was executed for user_id: {user_id}")
         else:
-            logger.info(f"The user specific coondition wasn't possible to execute for user_id: {user_id}")
+            logger.info(f"The user specific coondition couldn't be executed for user_id: {user_id}")
 
         if trigger_id == 'FilePath_and_Channel':
             file_path = file_path_and_channel_data['File-path']
@@ -530,119 +647,6 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
     else:
         raise PreventUpdate
 
-# Callback to update click data store, clicks on the waveform for annotation
-@app.callback(
-    Output('click-data', 'data'), # If you have a single output, please don't use []
-    [Input('ecg-graph', 'clickData'),
-     Input('FilePath_and_Channel', 'value'),
-     Input('No_FilePath_and_Channel', 'value'),
-     Input('Button_Action', 'value'),
-     Input('cancel-button', 'n_clicks')],
-    [State('click-data', 'data'), 
-     State('session_user_id', 'value'),
-     State('store_session_user_data', 'data')],
-    prevent_initial_call=True
-)
-def store_click_data(click_data, file_path_and_channel_data, No_file_path_and_channel_data, Action_var, cancel_clicks, clicks, user_id_pipe, stored_user_data_pipe, callback_context):
-    trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]  # Identifies the input that triggered the callback
-    logger.info(f"""
-                \n\n store_click_data callback triggered by: {trigger_id}\n
-                click_data: {click_data}\n
-                clicks: {clicks}\n
-                file_path_and_channel_data: {file_path_and_channel_data}\n
-                """)
-    
-    # Only proceed if the (stored_user_name and pipe_user_name == stored_user_name)
-    pipe_user_name = user_id_pipe['User_id']
-    stored_user_name = stored_user_data_pipe['User_name']
-    if stored_user_name and pipe_user_name == stored_user_name:
-            
-        if trigger_id == 'No_FilePath_and_Channel':
-            logger.info(f"Resetting click-data to {str({'Indices': [], 'Manual': False})}.\n")
-            return {'Indices': [], 'Manual': False}
-                # raise PreventUpdate  # Prevent callback 
-
-        elif trigger_id == 'FilePath_and_Channel':
-            file_path = file_path_and_channel_data['File-path']
-            channel = file_path_and_channel_data['Channel']
-            if file_path and channel:
-                logger.info(f"New file path and channel data received, resetting click-data.\n")
-                # Return the start and end indices of the last dictionary
-                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
-                if existing_values:
-                    last_item = existing_values[-1]
-                    start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
-                else:
-                    start_end_indices = []
-                logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
-                # Add a flag to indicate that this update is programmatic
-                return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
-            else:
-                logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n\tresetting click-data to [].\n")
-                return {'Indices': [], 'Manual': False}
-                # raise PreventUpdate  # Prevent callback 
-            
-        elif trigger_id == 'Button_Action': # 'refresh' or 'undo'
-            logger.info(f"\t\t\tConditional executed in store_click_data callback:\n\t\t\t\t\t\t-Action_var: {Action_var}\n")
-            file_path = file_path_and_channel_data['File-path']
-            channel = file_path_and_channel_data['Channel']
-            action_to_take = Action_var['Action']
-            if file_path and channel:
-                # Handle 'refresh' or 'undo' action
-                handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do=action_to_take)
-                # Retrieve existing data
-                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
-                if existing_values:
-                    last_item = existing_values[-1]
-                    start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
-                else:
-                    start_end_indices = []
-                logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
-                # Add a flag to indicate that this update is programmatic
-                return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
-            else:
-                logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n\t...\n")
-                raise PreventUpdate  # Prevent callback 
-        
-        elif trigger_id == 'cancel-button': 
-            logger.info(f"\t\t\tConditional executed in store_click_data callback:\n\t\t\t\t\t\t-Cancellation by: {cancel_clicks}\n")
-            file_path = file_path_and_channel_data['File-path']
-            channel = file_path_and_channel_data['Channel']
-            if file_path and channel:
-                # Retrieve existing data
-                existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
-                if existing_values:
-                    last_item = existing_values[-1]
-                    start_end_indices = [int(last_item['Start Index']), int(last_item['End Index'])]
-                else:
-                    start_end_indices = []
-                logger.info(f"Click_data was updated from retrieved data: \n\t\tstart_end_indices = {start_end_indices}\n")
-                # Add a flag to indicate that this update is programmatic
-                return {'Indices': start_end_indices, 'Manual': False}  # Update click-data 
-            else:
-                logger.info(f"There is an issue with the file path or the channel received: \n\tfile_path = {file_path} \n\tchannel = {channel}.\n\t...\n")
-                raise PreventUpdate  # Prevent callback 
-        
-        # And for trigger_id == 'ecg-graph':
-        if click_data:
-            clicks['Manual'] = True
-            x_click = click_data['points'][0]['x']
-            logger.info(f"\nx_click: {x_click}\n")
-            # button_click = click_data['points'][0].get('button', 0)  # Default to 0 (left click) if 'button' key is not found
-            # logger.info(f"x_click: {x_click}, button_click: {button_click}\n")
-            if clicks:
-                if len(clicks['Indices']) > 0 and x_click < clicks['Indices'][-1]:
-                    logger.info(f"New click index {x_click} is inferior to the previous index {clicks['Indices'][-1]}, preventing update.\n")
-                    raise PreventUpdate  # Prevent update if the new index is inferior to the previous index
-                clicks['Indices'].append(x_click)
-                if len(clicks['Indices']) > 2:  # Keep only the last two clicks
-                    clicks['Indices'] = clicks['Indices'][-2:]
-            else:
-                clicks = {'Indices': [x_click], 'Manual': True} # This is the part to modify later to start annotations from index '0'.
-            return clicks
-        raise PreventUpdate
-    else:
-        raise PreventUpdate
 #----------------------------------------------------------------------------------------------------------
 
 # Function to plot waveform data using Plotly
@@ -670,111 +674,65 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
         }
     )
 
-    # Define a list of 12 colors
-    colors = [
-        '#4fa1ee', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
-        '#1a55FF', '#db7100'
-    ]
+    # if existing_values:
+    #     # Sort existing_values in ascending order based on the value of 'Start Index'
+    #     existing_values = sorted(existing_values, key=lambda x: int(x['Start Index']))
 
     def plot_segments(existing_values, data, color_override=None):
-        previous_end_index = 0
         for item in existing_values:
             start_index = int(item['Start Index'])
             end_index = int(item['End Index'])
             color = color_override if color_override else item['Color']
-            
-            # Plot the portion before the current segment if it exists
-            if start_index > previous_end_index:
-                logger.info(f"\n\nThe portion before the start index was updated.\n\n")
-                segment_before = data[previous_end_index:start_index+1]
-                x_values_before = list(range(previous_end_index, start_index+1))
-                fig.add_trace(go.Scatter(
-                    x=x_values_before, 
-                    y=segment_before, 
-                    line=dict(color='#4fa1ee'),  # Default color for segments without specific color
-                    mode='lines'
-                ))
-            
-            # Plot the current segment
+            segment_name = item['Label']  # Use the label from the item for the trace name
+
+            # Plot only the annotated segments (they'll overlay on the full plot)
             segment = data[start_index:end_index+1]
             x_values = list(range(start_index, end_index+1))
             fig.add_trace(go.Scatter(
                 x=x_values, 
                 y=segment, 
-                line=dict(color=color), 
-                mode='lines'
+                line=dict(color=color),  # Use color from annotations
+                mode='lines',
+                name=segment_name  # Add custom trace name here
             ))
-            # Update the previous end index
-            previous_end_index = end_index
-        # Return the index after the last segment
-        return previous_end_index
-
+    
+    # Plot annotations over the full waveform
     if data:
         logger.info(f"In plot_segments function, \n\t\t\tif data == True\n")
+
+        # First, draw the entire waveform with the default color
+        x_values_full = list(range(len(data)))
+        fig.add_trace(go.Scatter(
+            x=x_values_full, 
+            y=data, 
+            line=dict(color='#4fa1ee'),  # Default color for the entire line
+            mode='lines',
+            name='Default'  # Custom trace name
+        ))
+
         if task_to_do == 'rebuild' and existing_values:
             logger.info(f"In plot_segments function, \n\t\t\ttask_to_do == 'rebuild' and existing_values\n")
-            previous_end_index = plot_segments(existing_values, data)
-
-            # Plot the portion after the last segment if it exists
-            if previous_end_index < len(data):
-                segment_after = data[previous_end_index:]
-                x_values_after = list(range(previous_end_index, len(data)))
-                fig.add_trace(go.Scatter(
-                    x=x_values_after, 
-                    y=segment_after, 
-                    line=dict(color='#4fa1ee'),  # Default color for segments without specific color
-                    mode='lines'
-                ))
+            plot_segments(existing_values, data)
 
         else:
             logger.info(f"In plot_segments function, \n\t\t\ttask_to_do != 'rebuild'\n")
             if existing_values:
-                previous_end_index = plot_segments(existing_values, data)
-            else:
-                previous_end_index = 0
-            
+                logger.info(f"In plot_segments function, \n\t\t\texisting_values have been plotted.\n")
+                plot_segments(existing_values, data)
+
             if click_data:
                 x1, x2 = sorted(click_data)
                 logger.info(f"In plot_segments function, \n\t\t\tif click_data = True ({click_data})\n")
-
-                if x1 > previous_end_index:
-                    logger.info(f"x1 > previous_end_index = {previous_end_index}\n")
-                    # Plot the portion before the current segment if it exists
-                    segment_before = data[previous_end_index:x1+1]
-                    x_values_before = list(range(previous_end_index, x1+1))
-                    fig.add_trace(go.Scatter(
-                        x=x_values_before, 
-                        y=segment_before, 
-                        line=dict(color='#4fa1ee'),  # Default color for segments without specific color
-                        mode='lines'
-                    ))
-                    logger.info(f"\n\nThe portion before the x1 index was updated.\n")
-
-                # Plot the clicked segment
+                # Plot the clicked segment (it will overlay the default line)
                 segment = data[x1:x2+1]
                 x_values = list(range(x1, x2+1))
                 fig.add_trace(go.Scatter(
                     x=x_values, 
                     y=segment, 
-                    line=dict(color='green'),  # Highlight the new segment with green color
+                    line=dict(color='green'),  # Highlight the new segment
                     mode='lines'
                 ))
                 logger.info(f"\n\nThe [x1, x2] segment from click_data was updated.\n\n")
-
-                # Update the previous end index to the end of the clicked segment
-                previous_end_index = x2
-
-            # Plot the portion after the last segment if it exists
-            if previous_end_index < len(data):
-                segment_after = data[previous_end_index:]
-                x_values_after = list(range(previous_end_index, len(data)))
-                fig.add_trace(go.Scatter(
-                    x=x_values_after, 
-                    y=segment_after, 
-                    line=dict(color='#4fa1ee'),  # Default color for segments without specific color
-                    mode='lines'
-                ))
 
     # Final condition to handle empty data
     else:
