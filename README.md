@@ -41,8 +41,8 @@ Before running the WebApp, you need to set up your environment:
       ```
 
 3. **Setting the Base File Path:**
-   - Navigate to `settings.py` in the `label_V02` folder within the `Label_V02` project directory.
-   - Update the `BASE_FILE_PATH` variable with the root directory path where you've placed the `Testing_Folder_Filtered`. Make sure this path does not include 'Testing_Folder_Filtered' itself and does not end with a `/` or `\`.
+   - Navigate to `settings.py` in the `label_V02` folder within the `Label-V02` project directory.
+   - Update the `BASE_FILE_PATH` variable with the root directory path where you've placed the folder `Testing_Folder_Filtered`. Make sure this path does not include 'Testing_Folder_Filtered' itself and does not end with a `/` or `\`.
   
      ```python
      BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"INSERT YOUR PATH HERE")
@@ -51,7 +51,7 @@ Before running the WebApp, you need to set up your environment:
      ```
 
 4. **Virtual Environment:**
-   - Create a new virtual environment in the `Label_V02` project folder.
+   - Create a new virtual environment in the `Label-V02` project folder.
    - Activate the virtual environment. If you're using pipenv, the commands are:
      ```bash
      cd Label-V02  # Navigate into the project folder
@@ -65,6 +65,7 @@ Before running the WebApp, you need to set up your environment:
      ```
 
 6. **Database Setup:**
+
    You have two options for setting up the database: using PostgreSQL or the default SQLite.
 
    **Option 1: PostgreSQL**
@@ -117,6 +118,10 @@ Before running the WebApp, you need to set up your environment:
      ```bash
      python manage.py collectstatic
      ```
+
+6. **Placement of the custom list of labels:** 
+
+   You need to replace the custom labels file named `Testing_existence.csv` in the project directory, which is called `Label-V02`. Ensure that you follow the format of the existing CSV file.
 
 ## Running the Application
 
