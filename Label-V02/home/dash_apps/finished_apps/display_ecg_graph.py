@@ -670,7 +670,19 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
             'title': {'text': plot_title, 'font': {'size': 24, 'color': Title_Color, 'family': 'Arial, sans-serif'}},
             'paper_bgcolor': '#27293d',
             'plot_bgcolor': 'rgba(0,0,0,0)',
-            'transition': {'duration': 300, 'easing': 'cubic-in-out'}
+            'transition': {'duration': 300, 'easing': 'cubic-in-out'},
+            'legend': { # Adding legend configuration
+                'font': {
+                    'color': 'Black',  # Legend text color
+                    'size': 14,      # Legend font size
+                    'family': 'Arial, sans-serif',  # Font family
+                    # 'family': 'Arial Black, sans-serif'  # Choose a bold font family
+                },
+                # 'bgcolor': 'LightSteelBlue',  # Optional: Legend background color
+                'bgcolor': 'white', # Optional: Legend background color
+                'bordercolor': 'Black',  # Optional: Legend border color
+                'borderwidth': 2  # Optional: Legend border width
+            }
         }
     )
 
@@ -692,8 +704,11 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
                 x=x_values, 
                 y=segment, 
                 line=dict(color=color),  # Use color from annotations
-                mode='lines',
-                name=segment_name  # Add custom trace name here
+                # mode='lines',
+                # name=segment_name  # Add custom trace name here
+                mode='lines',    # Add markers to have them visible in the legend
+                # marker=dict(color=color, size=10),  # Marker color corresponds to the line color
+                name=f"<span style='color:{color}'>{segment_name}</span>",  # Custom name with color
             ))
     
     # Plot annotations over the full waveform
@@ -707,7 +722,8 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
             y=data, 
             line=dict(color='#4fa1ee'),  # Default color for the entire line
             mode='lines',
-            name='Default'  # Custom trace name
+            # name='Default',  # Custom trace name
+            name=f"<span style='color:{'#4fa1ee'}'>{'Default'}</span>"  # Custom name with color
         ))
 
         if task_to_do == 'rebuild' and existing_values:
@@ -778,19 +794,6 @@ def extract_waveform(xml_file_path, target_channel):
 # Function to select the color
 def select_segment_color(sanitized_input):
     # List of options
-    # options = [
-    #     'QRS wave (duration, pattern)',
-    #     'Baseline',
-    #     'P-wave',
-    #     'PR interval',
-    #     'Q-wave',
-    #     'R-wave',
-    #     'S-wave',
-    #     'J-point (End point of QRS)',
-    #     'ST segment',
-    #     'T-wave',
-    #     'RR interval'
-    # ]
     options = get_list_of_labels()
 
     options = [item['value'] for item in options]
@@ -835,4 +838,3 @@ def select_segment_color(sanitized_input):
     except ValueError:
         # If the input is not in the options list, fall back to the default color
         return default_color
-    
