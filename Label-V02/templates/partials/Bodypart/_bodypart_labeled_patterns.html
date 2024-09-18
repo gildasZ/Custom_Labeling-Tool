@@ -130,9 +130,9 @@
         cursor: pointer;
         padding: 5px 10px; /* Add some padding for the box effect */
         border-radius: 8px;
-        border: 1px solid #00080c; /* Border matching your theme /#159ae7 */
+        border: 1px solid #00080c; /* #159ae7 */
         display: inline-block;
-        transition: all 0.3s ease-in-out; /* Simplified transition for all properties */
+        transition: all 0.3s ease-in-out; 
     }
 
     /* Hover effect */
@@ -167,6 +167,7 @@
         background-color: #353434;
         box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
         min-width: 150px;
+        min-height: 50px;
         z-index: 15;
         padding: 5px; /* Adjust padding */
         border: 2px solid #ffffff;
@@ -222,7 +223,7 @@
             <div class="label">
                 Label
                 <span id="dropdown-icon" class="dropdown-icon"> ▼ (Select)</span>
-                <div id="labelDropdown" class="dropdown-content"></div>
+                <!-- <div id="labelDropdown" class="dropdown-content"></div> -->
             </div>
             <div class="color">Color</div>
         </div>
@@ -235,7 +236,7 @@
         </div>
     </div>
 </div>
-
+<div id="labelDropdown" class="dropdown-content"></div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {    
@@ -381,6 +382,11 @@
                     populateDropdown(); // Populate dropdown with dummy data only if empty
                 }
             }
+        });
+
+        // Prevent the dropdown from closing when clicking inside it
+        dropdownContent.addEventListener('click', function(event) {
+            event.stopPropagation(); // Prevent click inside dropdown from closing it
         });
 
         // Add window click listener to close the dropdown when clicked outside
