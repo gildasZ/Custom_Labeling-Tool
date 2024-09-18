@@ -7,7 +7,6 @@ import asyncio
 from channels.generic.websocket import AsyncWebsocketConsumer
 from .utils import process_xml_data, convert_path, handle_annotation_to_csv
 from django_plotly_dash.consumers import async_send_to_pipe_channel
-from asgiref.sync import sync_to_async
 
 # Setup logger
 logger = logging.getLogger('home')
@@ -47,10 +46,6 @@ class ECGConsumer(AsyncWebsocketConsumer):
             self.group_name = f"ecg_analysis_{self.User_name}"
             await self.channel_layer.group_add(self.group_name, self.channel_name)
 
-            # # Save the user ID in the session asynchronously
-            # self.scope['session']['user_id'] = self.user.id
-            # await sync_to_async(self.scope['session'].save)()
-            
             try:
                 await self.accept()
                 # Send user data upon connection
@@ -203,6 +198,18 @@ class ECGConsumer(AsyncWebsocketConsumer):
                 logger.info(f"\t\t\tThe received 'Action variable' is not valid. \n\t\t\taction_var = {action_var}\n")
 
         #______________________________________________________________________________
+        elif data['type'] == 'labels_display_updated':
+            label_status = data['updated_labels_status']
+            logger.info(f"\nDjango received \n-updated_labels_status: {label_status}\n")
+
+            # Send the updated_labels_status to DjangoDash
+            await async_send_to_pipe_channel(
+                        channel_name = 'Labels_status_Channel',
+                        label = 'Labels_Display_Status',
+                        value = label_status)
+            logger.info(f"\n+++++ Django sent Message updated_labels_status data to dpd.Pipe: {label_status}\n\tfor self.User_name = {self.User_name}\n\tin conditional elif data['type'] == 'labels_display_updated'")
+
+        #______________________________________________________________________________
         else:
             logger.error(f"\nUnknown message type received: {data['type']}\n")
             await self.send(text_data=json.dumps({'error': 'Unknown message type'}))
@@ -222,7 +229,7 @@ class ECGConsumer(AsyncWebsocketConsumer):
     async def form_submission(self, event):
         # This method is called when a message of type 'form_submission' is sent to the group
         annotation = event['annotation']
-        click_indices = event.get('click_indices', ['Start_index', 'End_index'])
+        click_indices = event.get('click_indices', ['Start_index', 'End_index'])  # Returns second option as default if first is missing
         item_number = event['item_number']
         segment_color = event['Color']
         logger.info(f"\n+++++ Django Received form submission: \n-annotation: {annotation} \n-click indices: {click_indices} \n-item_number: {item_number}\n-and segment_color: {segment_color}")
@@ -236,3 +243,15 @@ class ECGConsumer(AsyncWebsocketConsumer):
             'Color': segment_color,
         }))
         logger.info(f"\n----- Django sent form submission annotation, click indices and item number to the client: \n{annotation}, \n{click_indices}, \n{item_number}\n")
+
+    async def labels_submission(self, event):
+        # This method is called when a message of type 'labels_submission' is sent to the group
+        labels_data = event['list_labels_display_status']
+        logger.info(f"\n+++++ Django received Labels_Pipe data: \n{labels_data}\n")
+
+        # Send a response to the client, if needed
+        await self.send(text_data=json.dumps({
+            'type': 'DjangoDash_labels_status',
+            'Labels_data': labels_data,
+        }))
+        logger.info(f"\n----- Django sent Labels_Pipe data to the client: {labels_data}\n")

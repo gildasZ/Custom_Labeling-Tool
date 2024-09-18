@@ -110,6 +110,107 @@
         /* box-sizing: border-box; */
         margin: auto; /* This will help in centering in case flex properties fail */
     }
+
+    /* ------------------------------------- Dropdown button styles ------------------------------------- */
+    .label {
+        display: flex;
+        align-items: center;
+        /* position: relative; */
+        justify-content: center;
+        gap: 15px;
+        z-index: 10; 
+    }
+
+    /* Style the dropdown icon as a button-like element */
+    .dropdown-icon {
+        cursor: pointer;
+        font-size: 14px;
+        color: #ffffff;
+        background-color: #353434; /* Background color for the dropdown box */
+        cursor: pointer;
+        padding: 5px 10px; /* Add some padding for the box effect */
+        border-radius: 8px;
+        border: 1px solid #00080c; /* Border matching your theme /#159ae7 */
+        display: inline-block;
+        transition: all 0.3s ease-in-out; /* Simplified transition for all properties */
+    }
+
+    /* Hover effect */
+    .dropdown-icon:hover {
+        color: rgb(8, 8, 8);
+        background-color: #ffffff; /* Slightly lighter shade on hover */
+        border-color: #fbff00; /* Change border color on hover */
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3); /* Add shadow for depth */
+        transform: scale(1.1); /* Enlarge the button slightly on hover */
+        font-size: 16px; /* Slight increase in font size on hover */
+        font-weight: bold; /* Make the text bold on hover */
+    }
+
+    /* Click (active) effect */
+    .dropdown-icon:active {
+        background-color: #ffffff; /* Darker background on click */
+        border-color: #ff6347; /* Make the border more intense on click */
+        box-shadow: inset 0px 4px 8px rgba(0, 0, 0, 0.4); /* Create an inset shadow for pressed effect */
+        transform: scale(0.95); /* Slightly reduce size on click */
+        font-size: 16px; /* Keep the font size increased on click */
+        font-weight: bold; /* Bold text on click */
+    }
+
+    /* Dropdown Content (Hidden by default) */
+    .dropdown-content {
+        display: none; /* Ensures it is hidden initially */
+        flex-direction: column; /* Ensures content aligns vertically */
+        position: fixed; /* Absolute (absolute; fixed;) positioning to take it out of the layout flow */
+        bottom: 300px; 
+        right: 25%;
+        width: auto;
+        background-color: #353434;
+        box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+        min-width: 150px;
+        z-index: 15;
+        padding: 5px; /* Adjust padding */
+        border: 2px solid #ffffff;
+        border-radius: 8px;
+        box-sizing: border-box;
+        color: #ffffff;
+        max-height: 450px; /* Limit height if there are many items */
+        overflow-y: auto;
+    }
+
+    /* Checkboxes inside dropdown */
+    .dropdown-content div {
+        display: block; /* Ensure each label-checkbox is on a new line */
+        margin: 2px 0; /* Reduced margin between checkboxes */
+        padding: 2px 0; /* Reduced padding between checkboxes */
+    }
+
+    /* Show the dropdown when clicked */
+    .show {
+        display: block;
+    }
+
+    /* Style for the checkbox-label wrapper */
+    .checkbox-label {
+        display: flex;           /* Use flex to align items horizontally */
+        align-items: center;           /* Center items vertically */
+        justify-content: flex-start;    /* Align items to the start */
+        padding: 2px 0;          /* Vertical spacing between items */
+        width: 100%;             /* Full width of the container */
+        box-sizing: border-box;   /* Ensure padding is included in the total width */
+    }
+
+    /* Style for the label */
+    .checkbox-label label {
+        margin-right: 10px;      /* Space between label and checkbox */
+        font-size: 16px;         /* Adjust font size as needed */
+        color: #ffffff;          /* Text color */
+    }
+
+    /* Style for the checkbox */
+    .checkbox-label input[type="checkbox"] {
+        transform: scale(1.2);   /* Increase the size of the checkbox if desired */
+        margin-right: 5px; /* Add space between checkbox and label */
+    }
 </style>
 
 <div class="Area-for-labeled-patterns">
@@ -118,7 +219,11 @@
             <div class="items">Items</div>
             <div class="start-index">Start Index</div>
             <div class="end-index">End Index</div>
-            <div class="label">Label</div>
+            <div class="label">
+                Label
+                <span id="dropdown-icon" class="dropdown-icon"> ▼ (Select)</span>
+                <div id="labelDropdown" class="dropdown-content"></div>
+            </div>
             <div class="color">Color</div>
         </div>
         <div class="patterns-table-container">
@@ -135,6 +240,10 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {    
         const patternsTable = document.getElementById('patterns-table').getElementsByTagName('tbody')[0];
+        const dropdownIcon = document.getElementById('dropdown-icon');
+        const dropdownContent = document.getElementById('labelDropdown');
+        // Store labelsData globally
+        let labelsDataGlobal = [];
 
         function resetTable() {
             patternsTable.innerHTML = ''; // Clears the table
@@ -239,5 +348,87 @@
 
             console.log("$$$ Patterns information table repopulated with retrieved data.");
         });
+
+        // Listen for 'labels_display' event
+        document.addEventListener('labels_display', function(event) {
+            // Store the received data into a global variable without processing it immediately
+            labelsDataGlobal = event.detail.Labels_data;
+            console.log("***'labels_display' data received:", labelsDataGlobal);
+        });
+
+        // // Dummy data for testing
+        const dummyLabels = [
+            { label: 'QRS wave', value: 'QRS wave', display: 1 },
+            { label: 'Baseline', value: 'Baseline', display: 0 },
+            { label: 'P-wave', value: 'P-wave', display: 1 },
+            { label: 'ST segment', value: 'ST segment', display: 0 }
+        ];
+
+        // Toggle dropdown visibility on click
+        dropdownIcon.addEventListener('click', function(event) {
+            event.stopPropagation(); // Prevent the click event from bubbling up
+            console.log("Dropdown icon clicked");
+            
+            // Toggle visibility by adding/removing 'show' class and adjusting display style
+            if (dropdownContent.classList.contains('show')) {
+                dropdownContent.classList.remove('show');
+                dropdownContent.style.display = 'none'; // Hide it if visible
+            } else {
+                dropdownContent.classList.add('show');
+                dropdownContent.style.display = 'block'; // Show it if hidden
+                if (dropdownContent.innerHTML === '') {
+                    console.log("Populating dropdown for the first time");
+                    populateDropdown(); // Populate dropdown with dummy data only if empty
+                }
+            }
+        });
+
+        // Add window click listener to close the dropdown when clicked outside
+        window.addEventListener('click', function() {
+            if (dropdownContent.classList.contains('show')) {
+                console.log("Closing dropdown because clicked outside");
+                dropdownContent.classList.remove('show');
+                dropdownContent.style.display = 'none'; // Hide it
+            }
+        });
+
+        // Function to populate dropdown with checkboxes
+        function populateDropdown() {
+            console.log("Clearing dropdown content");
+            dropdownContent.innerHTML = ''; // Clear existing content
+
+            // labelsDataGlobal = dummyLabels;
+            labelsDataGlobal.forEach((item, index) => {
+                console.log("Adding item to dropdown:", item.value);
+
+                const checkboxWrapper = document.createElement('div');
+                checkboxWrapper.className = 'checkbox-label';
+
+                // Create the label
+                const label = document.createElement('label');
+                label.textContent = item.value;
+
+                // Create the checkbox
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = item.display === 1;
+
+                // Append label and checkbox to the wrapper
+                checkboxWrapper.appendChild(label);
+                checkboxWrapper.appendChild(checkbox);
+
+                // Append the wrapper to the dropdown content
+                dropdownContent.appendChild(checkboxWrapper);
+
+                // Add event listener to the checkbox
+                checkbox.addEventListener('change', function() {
+                    labelsDataGlobal[index].display = this.checked ? 1 : 0;
+                    document.dispatchEvent(new CustomEvent('labels_display_update', { detail: labelsDataGlobal }));
+                    console.log("***'labels_display_update' event dispatched with data:", labelsDataGlobal);
+                });
+            });
+            console.log("Dropdown populated");
+        }
+        
     });
 </script>

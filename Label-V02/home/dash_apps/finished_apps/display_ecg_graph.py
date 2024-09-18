@@ -103,9 +103,14 @@ app.layout = html.Div([
             value = {'Action': None, 'Click_Order': None},
             label='This_Action',          # Label used to identify relevant messages
             channel_name='This_Action_Channel'), # channel_name='Action_Requested') # Channel whose messages are to be examined
+    dpd.Pipe(id='Labels_Pipe',    
+             value=[{**label, 'display': 1} for label in get_list_of_labels()],  # Modifying the list directly
+             label='Labels_Display_Status',
+             channel_name='Labels_status_Channel'),  # Channel name for updates
     dcc.Store(id='click-data', data= {'Indices': None, 'Manual': None}, storage_type='memory'),  # Store for click data
     dcc.Store(id='Button_Action_Store', data=None, storage_type='memory'),  # Store for handling consecutive 'undo' or 'refresh' actions.
     dcc.Store(id='dummy-output', data=None, storage_type='memory'),
+    dcc.Store(id='dummy-output_2', data=None, storage_type='memory'),  # I seem forced to use it, but it is not triggering anything
     dcc.Store(id='store_session_user_data', data={'User_name': None, 'Status': 'Empty'}, storage_type='memory'), # I am using this to prevent all instances of the app to be updated for all users.
     html.Div(
         id='input-modal',
@@ -175,6 +180,42 @@ def store_user_specific_info(user_id_pipe, stored_user_data_pipe, callback_conte
     else:
         logger.info(f"")
         raise PreventUpdate
+
+@app.callback(
+    Output('dummy-output_2', 'data'), # Could use it as a state in this callback to prevent further updates
+    Input('store_session_user_data', 'data'), 
+    [State('session_user_id', 'value'),  # Listen for changes in the Labels_Pipe value
+     State('Labels_Pipe', 'value')],  # Get the stored user data
+    prevent_initial_call=True  # Ensure this callback only runs when inputs change
+)
+def send_labels_when_user_available(stored_user_data, user_id_pipe, labels_pipe_value, callback_context):
+    trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]  # Identifies the input that triggered the callback
+    logger.info(f"\n\n send_labels_when_user_available callback triggered by: {trigger_id}\n")
+    if not callback_context.triggered:
+        raise PreventUpdate  # Prevent callback if no input has triggered it
+    
+    # Get the user_id from the pipe and the stored data
+    pipe_user_id = user_id_pipe['User_id']  # This is coming from the session_user_id pipe
+    stored_user_id = stored_user_data['User_name']  # Assuming User_name is the correct stored identifier
+
+    # Check if the user_id from the pipe matches the stored user_id
+    if stored_user_id and pipe_user_id == stored_user_id:
+        logger.info(f"User_id available: {pipe_user_id}. Proceeding to send Labels_Pipe data to Django.")
+        # Send the data to Django
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"ecg_analysis_{pipe_user_id}",  # Using the correct user ID in the group name
+            {
+                "type": "labels_submission",  # This should match the method in the consumer
+                "list_labels_display_status": labels_pipe_value,
+            }
+        )
+        logger.info(f"\n\nLabels_Pipe data sent to Django for user_id '{pipe_user_id}': \n{labels_pipe_value}\n")
+        return {'status': 'success'}
+    else:
+        # Log if the user_id is not yet available or doesn't match
+        logger.info(f"User_id '{pipe_user_id}' not available or does not match stored user_id '{stored_user_id}'. No action taken.")
+        raise PreventUpdate  # No action if user ID is not available or doesn't match
 
 # This callback is supposed to manage the sending of information to Django side, inside the ECGConsumer consummer
 @app.callback(
@@ -434,20 +475,21 @@ def store_click_data(click_data, file_path_and_channel_data, No_file_path_and_ch
      Input('No_FilePath_and_Channel', 'value'),
      Input('click-data', 'data'), 
      Input('cancel-button', 'n_clicks'),
-     Input('dummy-output', 'data')], # Dummy input after the annotation is entered in the working csv file in handle_form_submission callback
+     Input('dummy-output', 'data'), # Dummy input after the annotation is entered in the working csv file in handle_form_submission callback
+     Input('Labels_Pipe', 'value')],  # Input for determining the display status of each label (display or not) 
     [State('Button_Action', 'value'),
      State('session_user_id', 'value'),
      State('store_session_user_data', 'data')]
     # prevent_initial_call=False # Allow the initial call to trigger the callback 
 )
-def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clicks, cancel_n_clicks, dummy_output, Action_var, user_id_pipe, stored_user_data_pipe, callback_context):    
+def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clicks, cancel_n_clicks, dummy_output, labels_pipe_value, Action_var, user_id_pipe, stored_user_data_pipe, callback_context):    
     # if not callback_context.triggered:
     if not callback_context.triggered or (callback_context.triggered[0]['prop_id'].split('.')[0] == 'dummy-output' and dummy_output is None):
         logger.info(f"\n\nupdate_graph callback triggered for initialization of the Dashboard: \n")
         waveform_data = []
         Title_Color = 'orange'
         plot_title = f"\tInitializing. No Data Available. Time: {str(datetime.datetime.now())}"
-        fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+        fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value) # Assume this function exists and works
 
         user_id = user_id_pipe['User_id']
         logger.info(f"""
@@ -457,6 +499,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                     click-data: {clicks}\n
                     cancel-button n_clicks: {cancel_n_clicks}\n
                     Button_Action: {Action_var}\n
+                    Labels_Pipe: {labels_pipe_value}\n
                     """)
         return fig
     
@@ -480,7 +523,8 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                     FilePath_and_Channel: {file_path_and_channel_data}
                     click-data: {clicks}
                     cancel-button n_clicks: {cancel_n_clicks}
-                    Button_Action: {Action_var}\n
+                    Button_Action: {Action_var}
+                    Labels_Pipe: {labels_pipe_value}\n
                     """)
 
         if user_id == No_file_path_and_channel_data['User_id']:
@@ -495,7 +539,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
     
             # Use this later once everything is okay
             # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
-            # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
+            # fig = plot_waveform(waveform_data, "ECG Waveform", 'green', labels_pipe_value)
 
             if file_path and channel:
                 existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
@@ -505,7 +549,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                 async_to_sync(channel_layer.group_send)(
                     f"ecg_analysis_{user_id}",  # This is the group name that your consumer should be listening to
                     {
-                        "type": "retrieved_data",  # This should match a method in your consumer
+                        "type": "retrieved_data",  # This should match a method in consumer
                         "Existing_Data": existing_values,
                     }
                 )
@@ -516,7 +560,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                 plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
                 Title_Color = 'green'
                 logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
-                fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
+                fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value, existing_values=existing_values)
                 return fig
         
             # Check if either file_path or channel is None or empty
@@ -526,7 +570,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                 Title_Color = 'orange'
                 plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
                 logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
-                fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+                fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value) # Assume this function exists and works
                 return fig
 
         elif trigger_id == 'No_FilePath_and_Channel':
@@ -534,7 +578,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
             waveform_data = []
             Title_Color = 'orange'
             plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
-            fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+            fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value) # Assume this function exists and works
             return fig
             
         elif trigger_id == 'click-data':
@@ -552,7 +596,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                         logger.info(f"\nOn 2 clicks, 'if condition': waveform_data length: {len(waveform_data)}\n")
                         existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
                         logger.info(f"In update_graph callback, \n\texecuted handle_annotation_to_csv function and \n\t\tretrieved existing_values = \n{existing_values}\n")
-                        fig = plot_waveform(waveform_data, plot_title, Title_Color, existing_values=existing_values, click_data=clicks['Indices']) # Assume this function exists and works
+                        fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value, existing_values=existing_values, click_data=clicks['Indices']) # Assume this function exists and works
                         return fig
                 
                     else:
@@ -561,7 +605,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                         Title_Color = 'orange'
                         plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
                         logger.info(f"\nOn 2 clicks, 'else condition': waveform_data length: {len(waveform_data)}\n")
-                        fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+                        fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value) # Assume this function exists and works
                         return fig
                 
                 else:
@@ -575,7 +619,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
         
                 # Use this later once everything is okay
                 # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
-                # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
+                # fig = plot_waveform(waveform_data, "ECG Waveform", 'green', labels_pipe_value)
 
                 # Check if either file_path or channel is None or empty
 
@@ -598,7 +642,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                     plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
                     Title_Color = 'green'
                     logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
-                    fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
+                    fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value, task_to_do='rebuild', existing_values=existing_values)
                     return fig
                 
                 # Check if either file_path or channel is None or empty
@@ -608,10 +652,10 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                     Title_Color = 'orange'
                     plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
                     logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
-                    fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+                    fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value) # Assume this function exists and works
                     return fig
                 
-        elif trigger_id in ('cancel-button', 'dummy-output'):
+        elif trigger_id in ('cancel-button', 'dummy-output', 'Labels_Pipe'):
             file_path = file_path_and_channel_data['File-path']
             channel = file_path_and_channel_data['Channel']
             
@@ -619,7 +663,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
 
             # Use this later once everything is okay
             # waveform_data = extract_waveform(file_path, channel) if file_path and channel else []
-            # fig = plot_waveform(waveform_data, "ECG Waveform", 'green')
+            # fig = plot_waveform(waveform_data, "ECG Waveform", 'green', labels_pipe_value)
 
             # Check if either file_path or channel is None or empty
 
@@ -632,7 +676,19 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                 plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
                 Title_Color = 'green'
                 logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
-                fig = plot_waveform(waveform_data, plot_title, Title_Color, task_to_do='rebuild', existing_values=existing_values)
+                fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value, existing_values=existing_values)
+
+                # if trigger_id == 'Labels_Pipe':
+                #     channel_layer = get_channel_layer()
+                #     async_to_sync(channel_layer.group_send)(
+                #         f"ecg_analysis_{user_id}",  # This is the group name that your consumer should be listening to
+                #         {
+                #             "type": "retrieved_data",  # This should match a method in your consumer
+                #             "Existing_Data": existing_values,
+                #         }
+                #     )
+                #     logger.info(f"async_to_sync was executed to send Retrieved Data to Django.\n")
+                
                 return fig
             
             # Check if either file_path or channel is None or empty
@@ -642,7 +698,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                 Title_Color = 'orange'
                 plot_title = f"No Data Available. Time: {str(datetime.datetime.now())}"
                 logger.info(f"\n'else condition' waveform_data length: {len(waveform_data)}\n")
-                fig = plot_waveform(waveform_data, plot_title, Title_Color) # Assume this function exists and works
+                fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value) # Assume this function exists and works
                 return fig
     else:
         raise PreventUpdate
@@ -650,7 +706,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
 #----------------------------------------------------------------------------------------------------------
 
 # Function to plot waveform data using Plotly
-def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_values=None, click_data=None):
+def plot_waveform(data, plot_title, Title_Color, labels_pipe_value, existing_values=None, click_data=None):
     logger.info(f"plot_waveform function was called!\n")
     # Initialize figure with layout that supports animations
     fig = go.Figure(
@@ -686,9 +742,12 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
         }
     )
 
-    # if existing_values:
-    #     # Sort existing_values in ascending order based on the value of 'Start Index'
-    #     existing_values = sorted(existing_values, key=lambda x: int(x['Start Index']))
+    def get_display_status(segment_name):
+        for label_data in labels_pipe_value:
+            if label_data['value'] == segment_name:
+                # Retrieve the display status (default to False if 'display' key is missing)
+                return label_data.get('display', 0) == 1
+        return False
 
     def plot_segments(existing_values, data, color_override=None):
         for item in existing_values:
@@ -696,20 +755,20 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
             end_index = int(item['End Index'])
             color = color_override if color_override else item['Color']
             segment_name = item['Label']  # Use the label from the item for the trace name
-
-            # Plot only the annotated segments (they'll overlay on the full plot)
-            segment = data[start_index:end_index+1]
-            x_values = list(range(start_index, end_index+1))
-            fig.add_trace(go.Scatter(
-                x=x_values, 
-                y=segment, 
-                line=dict(color=color),  # Use color from annotations
-                # mode='lines',
-                # name=segment_name  # Add custom trace name here
-                mode='lines',    # Add markers to have them visible in the legend
-                # marker=dict(color=color, size=10),  # Marker color corresponds to the line color
-                name=f"<span style='color:{color}'>{segment_name}</span>",  # Custom name with color
-            ))
+            display_status = get_display_status(segment_name)  # Retrieve display status for this segment
+            if display_status:
+                # Plot only the annotated segments (they'll overlay on the full plot)
+                segment = data[start_index:end_index+1]
+                x_values = list(range(start_index, end_index+1))
+                fig.add_trace(go.Scatter(
+                    x=x_values, 
+                    y=segment, 
+                    line=dict(color=color),  # Use color from annotations
+                    mode='lines',
+                    name=f"<span style='color:{color}'>{segment_name}</span>",  # Custom name with color
+                ))
+            else:
+                logger.info(f"Skipping segment: {segment_name} due to display being set to 0")
     
     # Plot annotations over the full waveform
     if data:
@@ -726,31 +785,24 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
             name=f"<span style='color:{'#4fa1ee'}'>{'Default'}</span>"  # Custom name with color
         ))
 
-        if task_to_do == 'rebuild' and existing_values:
-            logger.info(f"In plot_segments function, \n\t\t\ttask_to_do == 'rebuild' and existing_values\n")
+        if existing_values:
+            logger.info(f"In plot_segments function, \n\t\t\trebuilding annotations from existing_values\n")
             plot_segments(existing_values, data)
 
-        else:
-            logger.info(f"In plot_segments function, \n\t\t\ttask_to_do != 'rebuild'\n")
-            if existing_values:
-                logger.info(f"In plot_segments function, \n\t\t\texisting_values have been plotted.\n")
-                plot_segments(existing_values, data)
+        if click_data:
+            x1, x2 = sorted(click_data)
+            logger.info(f"In plot_segments function, \n\t\t\tif click_data = True ({click_data})\n")
+            # Plot the clicked segment (it will overlay the default line)
+            segment = data[x1:x2+1]
+            x_values = list(range(x1, x2+1))
+            fig.add_trace(go.Scatter(
+                x=x_values, 
+                y=segment, 
+                line=dict(color='green'),  # Highlight the new segment
+                mode='lines'
+            ))
+            logger.info(f"\n\nThe [x1, x2] segment from click_data was updated.\n\n")
 
-            if click_data:
-                x1, x2 = sorted(click_data)
-                logger.info(f"In plot_segments function, \n\t\t\tif click_data = True ({click_data})\n")
-                # Plot the clicked segment (it will overlay the default line)
-                segment = data[x1:x2+1]
-                x_values = list(range(x1, x2+1))
-                fig.add_trace(go.Scatter(
-                    x=x_values, 
-                    y=segment, 
-                    line=dict(color='green'),  # Highlight the new segment
-                    mode='lines'
-                ))
-                logger.info(f"\n\nThe [x1, x2] segment from click_data was updated.\n\n")
-
-    # Final condition to handle empty data
     else:
         fig.add_trace(go.Scatter(
             y=[],
@@ -758,7 +810,7 @@ def plot_waveform(data, plot_title, Title_Color, task_to_do='usual', existing_va
             line=dict(color='red')
         ))
 
-    fig.frames = [go.Frame(data=[go.Scatter(y=data)])] # Looks like this can be removed.
+    # fig.frames = [go.Frame(data=[go.Scatter(y=data)])] # Looks like this can be removed.
     return fig
 
 # Function to extract waveform data from XML file

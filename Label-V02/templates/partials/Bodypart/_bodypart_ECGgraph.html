@@ -194,7 +194,11 @@
                 console.log("User_id received:", user_id);
                 // Dispatch the event with data for other components to use
                 document.dispatchEvent(new CustomEvent('Receive_data', { detail: data }));
-            }
+            } else if (data.type === 'DjangoDash_labels_status') {
+                console.log("***Client received 'labels_display' data from Django:", data);
+                // Dispatch the event with data 
+                document.dispatchEvent(new CustomEvent('labels_display', { detail: data }));
+            } 
         }
 
         socket.onerror = function(error) {
@@ -251,6 +255,19 @@
             // Send the data to the server via WebSocket
             socket.send(JSON.stringify(postData));
             console.log("   Client sent the 'Refresh or Save or Undo or Save All' action to Django for processing,      action:", action_var);
+        });
+
+        document.addEventListener('labels_display_update', function(event) {
+            var labels_updated = event.detail;
+            console.log("***Updated 'labels_display' data received:", labels_updated);
+            // Prepare the data to send with WebSocket
+            var postData = {
+                type: 'labels_display_updated', // Specific type for this combined data
+                updated_labels_status: labels_updated
+            };
+            // Send the data to the server via WebSocket
+            socket.send(JSON.stringify(postData));
+            console.log("   Client sent the 'labels_display_updated' data to Django for processing,      data:", postData);
         });
     });
 </script>
