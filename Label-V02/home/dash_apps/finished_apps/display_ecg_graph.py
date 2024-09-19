@@ -642,7 +642,7 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
                     plot_title = f"Remove after debugging. Time: {str(datetime.datetime.now())}"
                     Title_Color = 'green'
                     logger.info(f"\n'if condition' waveform_data length: {len(waveform_data)}\n")
-                    fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value, task_to_do='rebuild', existing_values=existing_values)
+                    fig = plot_waveform(waveform_data, plot_title, Title_Color, labels_pipe_value, existing_values=existing_values)
                     return fig
                 
                 # Check if either file_path or channel is None or empty
