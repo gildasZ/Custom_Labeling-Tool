@@ -754,8 +754,10 @@ def plot_waveform(data, plot_title, Title_Color, labels_pipe_value, existing_val
             start_index = int(item['Start Index'])
             end_index = int(item['End Index'])
             color = color_override if color_override else item['Color']
-            segment_name = item['Label']  # Use the label from the item for the trace name
-            display_status = get_display_status(segment_name)  # Retrieve display status for this segment
+            label_name = item['Label']
+            segment_name = f"Item {item['Item Number']}: {item['Label']}"  # Use the label from the item for the trace name
+            display_status = get_display_status(label_name)  # Retrieve display status for this segment
+            # logger.info(f"Display value: {display_status}")
             if display_status:
                 # Plot only the annotated segments (they'll overlay on the full plot)
                 segment = data[start_index:end_index+1]

@@ -212,12 +212,23 @@
         transform: scale(1.2);   /* Increase the size of the checkbox if desired */
         margin-right: 5px; /* Add space between checkbox and label */
     }
+
+    #search-bar {
+        width: 40%; /* Set the width of the search bar */
+        padding: 0px; /* Remove padding */
+        margin-right: 10px; /* Add space between the search bar and the "Items" text */
+        border-radius: 5px; /* Rounded corners */
+        border: 1px solid #ddd; /* Light grey border */
+    }
 </style>
 
 <div class="Area-for-labeled-patterns">
     <div class="labeled-patterns">
         <div class="header">
-            <div class="items">Items</div>
+            <div class="items">
+                <input id="search-bar" type="text" placeholder="Search..." />
+                Items
+            </div>
             <div class="start-index">Start Index</div>
             <div class="end-index">End Index</div>
             <div class="label">
@@ -243,12 +254,127 @@
         const patternsTable = document.getElementById('patterns-table').getElementsByTagName('tbody')[0];
         const dropdownIcon = document.getElementById('dropdown-icon');
         const dropdownContent = document.getElementById('labelDropdown');
-        // Store labelsData globally
-        let labelsDataGlobal = [];
+        let labelsDataGlobal = [];  // Store labelsData globally
+        let retrievedData = [];  // Store the retrieved pattern data
+        const searchBar = document.getElementById('search-bar');
 
         function resetTable() {
             patternsTable.innerHTML = ''; // Clears the table
         }
+
+        function scrollToBottom() {
+            const patternsContainer = document.querySelector('.patterns-table-container');
+            patternsContainer.scrollTop = patternsContainer.scrollHeight;
+        }
+
+        // Function to repopulate the table with the given/retrieved data
+        function populateTableWithPatterns(data, applyTextColor = false) {
+            data.forEach(item => {
+                // Check if the label exists in labelsDataGlobal and its display property is set to 1
+                const matchingLabel = labelsDataGlobal.find(labelItem => labelItem.value === item['Label'] && labelItem.display === 1);
+                if (matchingLabel) { // Proceed only if a match is found and display is 1
+                    // Create a new row in the table
+                    const row = patternsTable.insertRow();
+
+                    const itemCell = row.insertCell(0);
+                    itemCell.className = 'items';
+                    itemCell.textContent = item['Item Number'];
+
+                    const startIndexCell = row.insertCell(1);
+                    startIndexCell.className = 'start-index';
+                    startIndexCell.textContent = item['Start Index'];
+
+                    const endIndexCell = row.insertCell(2);
+                    endIndexCell.className = 'end-index';
+                    endIndexCell.textContent = item['End Index'];
+
+                    const labelCell = row.insertCell(3);
+                    labelCell.className = 'label';
+                    labelCell.textContent = item['Label'];
+                    
+                    // Create a color box for the color cell
+                    const colorCell = row.insertCell(4);
+                    colorCell.className = 'color';
+                    const colorDiv = document.createElement('div');
+                    colorDiv.className = 'color-box';
+                    colorDiv.style.backgroundColor = item['Color']; // Sets the background color dynamically
+                    colorCell.appendChild(colorDiv);
+
+                    // Conditionally apply/override custom text color to the label cell
+                    if (applyTextColor) {
+                        // Example of setting text color dynamically
+                        labelCell.style.color = '#33ff57'; // Setting a tomato ('#FF6347') or green ('#397446') or lime green ('#472dda') color for Label
+                    }
+                }
+            });
+        }
+
+        // Function to populate dropdown with checkboxes
+        function populateDropdown() {
+            console.log("Clearing dropdown content");
+            dropdownContent.innerHTML = ''; // Clear existing content
+
+            labelsDataGlobal.forEach((item, index) => {
+                console.log("Adding item to dropdown:", item.value);
+
+                const checkboxWrapper = document.createElement('div');
+                checkboxWrapper.className = 'checkbox-label';
+
+                // Create the label
+                const label = document.createElement('label');
+                label.textContent = item.value;
+
+                // Create the checkbox
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = item.display === 1;
+
+                // Append label and checkbox to the wrapper
+                checkboxWrapper.appendChild(label);
+                checkboxWrapper.appendChild(checkbox);
+
+                // Append the wrapper to the dropdown content
+                dropdownContent.appendChild(checkboxWrapper);
+
+                // Add event listener to the checkbox
+                checkbox.addEventListener('change', function() {
+                    labelsDataGlobal[index].display = this.checked ? 1 : 0;
+                    document.dispatchEvent(new CustomEvent('labels_display_update', { detail: labelsDataGlobal }));
+                    console.log("***'labels_display_update' event dispatched with data:", labelsDataGlobal);
+                    // Reset and repopulate the table based on the updated display status of labels, and scroll to bottom
+                    resetTable(); // Clear the table first
+                    populateTableWithPatterns(retrievedData); // Repopulate the table with the current data
+                    scrollToBottom();
+                });
+            });
+            console.log("Dropdown populated");
+        }
+
+        // Helper function to create Delete and Cancel buttons
+        function createDeleteCancelButtons() {
+            // Clear existing buttons if any
+            const existingButtons = document.getElementById('action-buttons');
+            if (existingButtons) existingButtons.remove();
+
+            // Create a new container for the buttons
+            const buttonContainer = document.createElement('div');
+            buttonContainer.id = 'action-buttons';
+            buttonContainer.style.marginTop = '10px';
+            buttonContainer.innerHTML = `
+                <button id="delete-btn">Delete</button>
+                <button id="cancel-btn">Cancel</button>
+            `;
+            // Append the buttons container below the table
+            patternsTableContainer.appendChild(buttonContainer);
+        }
+
+
+
+
+        document.addEventListener('fileSelected', function(event) {
+            resetTable(); // Reset the table when a new file is selected
+            console.log("$$$ Patterns information table was reset.");
+        });
 
         document.addEventListener('DjangoDash_message', function(event) {
             const labeledPattern = event.detail.Annotation_message;
@@ -259,94 +385,31 @@
             console.log("*** File '_bodypart_labeled_patterns.html' received Annotation_message:", labeledPattern);
             console.log("*** Click indices:", clickIndices);
             console.log("*** and Item number:", Item_number);
-            
-            // Ensure that clickIndices has exactly two elements
-            const startIndex = clickIndices.length > 0 ? clickIndices[0] : 'N/A';
-            const endIndex = clickIndices.length > 1 ? clickIndices[1] : 'N/A';
-            
-            // Create a new row in the table
-            const row = patternsTable.insertRow();
-            const itemCell = row.insertCell(0);
-            itemCell.className = 'items';
-            itemCell.textContent = Item_number; 
+            // Construct new pattern object for consistency with the populateTableWithPatterns function
+            const newPattern = [{
+                'Item Number': Item_number,
+                'Start Index': clickIndices[0] || 'N/A',
+                'End Index': clickIndices[1] || 'N/A',
+                'Label': labeledPattern,
+                'Color': color
+            }];
 
-            const startIndexCell = row.insertCell(1);
-            startIndexCell.className = 'start-index';
-            startIndexCell.textContent = startIndex;
-            if (startIndex === 'N/A') {
-                startIndexCell.style.color = '#FF6347'; // Set color to #FF6347 if value is 'N/A'
-            }
-
-            const endIndexCell = row.insertCell(2);
-            endIndexCell.className = 'end-index';
-            endIndexCell.textContent = endIndex;
-            if (endIndex === 'N/A') {
-                endIndexCell.style.color = '#FF6347'; // Set color to #FF6347 if value is 'N/A'
-            }
-
-            const labelCell = row.insertCell(3);
-            labelCell.className = 'label';
-            labelCell.textContent = labeledPattern; // For 'Label'
-
-            // Create a color box for the color cell
-            const colorCell = row.insertCell(4);
-            colorCell.className = 'color'; // Make sure this matches the class used in the CSS
-            const colorDiv = document.createElement('div');
-            colorDiv.className = 'color-box';
-            colorDiv.style.backgroundColor = color; // Sets the background color dynamically
-            colorCell.appendChild(colorDiv); // Append the color div to the cell
-            
-            // Example of setting text color dynamically
-            labelCell.style.color = '#33ff57' ; // Setting a tomato ('#FF6347') or green ('#397446') color for Label
-            // colorCell.style.color = '#472dda'; // Setting a lime green color for Color
-
+            // Add the new pattern to the table using the same function
+            populateTableWithPatterns(newPattern, true);
+            // Scroll to bottom after the new pattern is added
+            scrollToBottom();
             console.log("$$$ New pattern information added to the table.");
         });
 
-        document.addEventListener('fileSelected', function(event) {
-            resetTable(); // Reset the table when a new file is selected
-            console.log("$$$ Patterns information table was reset.");
-        });
-
         document.addEventListener('DjangoDash_retrieved_data_message', function(event) {
-            const retrievedData = event.detail.Existing_Data; // Get the retrieved data from the event detail
-
+            retrievedData = event.detail.Existing_Data; // Get the retrieved data from the event detail
             // Reset the table
             resetTable(); 
             console.log("$$$ Patterns information table was reset.");
-
-            // Repopulate the table with the retrieved data
-            retrievedData.forEach(item => {
-                // Create a new row in the table
-                const row = patternsTable.insertRow();
-                const itemCell = row.insertCell(0);
-                itemCell.className = 'items';
-                itemCell.textContent = item['Item Number'];
-
-                const startIndexCell = row.insertCell(1);
-                startIndexCell.className = 'start-index';
-                startIndexCell.textContent = item['Start Index'];
-
-                const endIndexCell = row.insertCell(2);
-                endIndexCell.className = 'end-index';
-                endIndexCell.textContent = item['End Index'];
-
-                const labelCell = row.insertCell(3);
-                labelCell.className = 'label';
-                labelCell.textContent = item['Label'];
-                
-                // Create a color box for the color cell
-                const colorCell = row.insertCell(4);
-                colorCell.className = 'color';
-                const colorDiv = document.createElement('div');
-                colorDiv.className = 'color-box';
-                colorDiv.style.backgroundColor = item['Color']; // Sets the background color dynamically
-                colorCell.appendChild(colorDiv);
-
-                // Set the text color for the label cell
-                // labelCell.style.color = '#33ff57'; // Example color
-            });
-
+            // Repopulate the table with the retrieved data using the function
+            populateTableWithPatterns(retrievedData);
+            // Scroll to bottom after the new patterns are added
+            scrollToBottom();
             console.log("$$$ Patterns information table repopulated with retrieved data.");
         });
 
@@ -356,14 +419,6 @@
             labelsDataGlobal = event.detail.Labels_data;
             console.log("***'labels_display' data received:", labelsDataGlobal);
         });
-
-        // // Dummy data for testing
-        const dummyLabels = [
-            { label: 'QRS wave', value: 'QRS wave', display: 1 },
-            { label: 'Baseline', value: 'Baseline', display: 0 },
-            { label: 'P-wave', value: 'P-wave', display: 1 },
-            { label: 'ST segment', value: 'ST segment', display: 0 }
-        ];
 
         // Toggle dropdown visibility on click
         dropdownIcon.addEventListener('click', function(event) {
@@ -397,44 +452,56 @@
                 dropdownContent.style.display = 'none'; // Hide it
             }
         });
+    
+    
+        searchBar.addEventListener('input', function() {
+        const searchValue = searchBar.value.trim();
 
-        // Function to populate dropdown with checkboxes
-        function populateDropdown() {
-            console.log("Clearing dropdown content");
-            dropdownContent.innerHTML = ''; // Clear existing content
+        if (!isNaN(searchValue) && searchValue !== '') {
+            // Check if the entered value is a number and exists in the retrievedData
+            const foundItem = retrievedData.find(item => item['Item Number'] === searchValue);
 
-            // labelsDataGlobal = dummyLabels;
-            labelsDataGlobal.forEach((item, index) => {
-                console.log("Adding item to dropdown:", item.value);
+            if (foundItem) {
+                resetTable(); // Clear the table first
 
-                const checkboxWrapper = document.createElement('div');
-                checkboxWrapper.className = 'checkbox-label';
+                // Add a new row with the found item's data
+                const row = patternsTable.insertRow();
 
-                // Create the label
-                const label = document.createElement('label');
-                label.textContent = item.value;
-
-                // Create the checkbox
+                const checkboxCell = row.insertCell(0);
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
-                checkbox.checked = item.display === 1;
+                checkboxCell.appendChild(checkbox); // Add checkbox before item number
 
-                // Append label and checkbox to the wrapper
-                checkboxWrapper.appendChild(label);
-                checkboxWrapper.appendChild(checkbox);
+                const itemCell = row.insertCell(1);
+                itemCell.textContent = foundItem['Item Number'];
 
-                // Append the wrapper to the dropdown content
-                dropdownContent.appendChild(checkboxWrapper);
+                const startIndexCell = row.insertCell(2);
+                startIndexCell.textContent = foundItem['Start Index'];
 
-                // Add event listener to the checkbox
-                checkbox.addEventListener('change', function() {
-                    labelsDataGlobal[index].display = this.checked ? 1 : 0;
-                    document.dispatchEvent(new CustomEvent('labels_display_update', { detail: labelsDataGlobal }));
-                    console.log("***'labels_display_update' event dispatched with data:", labelsDataGlobal);
-                });
-            });
-            console.log("Dropdown populated");
+                const endIndexCell = row.insertCell(3);
+                endIndexCell.textContent = foundItem['End Index'];
+
+                const labelCell = row.insertCell(4);
+                labelCell.textContent = foundItem['Label'];
+
+                const colorCell = row.insertCell(5);
+                const colorDiv = document.createElement('div');
+                colorDiv.className = 'color-box';
+                colorDiv.style.backgroundColor = foundItem['Color'];
+                colorCell.appendChild(colorDiv);
+
+                // Scroll to the bottom of the table
+                scrollToBottom();
+
+                // Create Delete and Cancel buttons below the table
+                createDeleteCancelButtons();
+            } else {
+                console.log("Item number not found in retrieved data.");
+            }
         }
-        
+    });
+
+    
+    
     });
 </script>
