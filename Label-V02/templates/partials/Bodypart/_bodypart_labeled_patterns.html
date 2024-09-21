@@ -220,6 +220,36 @@
         border-radius: 5px; /* Rounded corners */
         border: 1px solid #ddd; /* Light grey border */
     }
+
+    .action-button {
+        padding: 8px 16px; /* Controls the size of the button */
+        font-size: 16px; /* Controls text size */
+        color: #fff; /* Text color */
+        border: none; /* Remove default border */
+        border-radius: 5px; /* Rounded corners */
+        cursor: pointer; /* Changes cursor to pointer on hover */
+        margin-right: 10px; /* Adds space between buttons */
+    }
+
+    .action-button.delete {
+        background-color: #e74c3c; /* Red background for Delete button */
+        margin-left: 20px; /* Add left margin to move the button away from the left edge */
+    }
+
+    .action-button.cancel {
+        background-color: #3498db; /* Blue background for Cancel button */
+    }
+
+    /* Hover and active effects */
+    .action-button:hover {
+        opacity: 0.8; /* Slightly reduce opacity on hover */
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Add a shadow on hover for depth */
+    }
+
+    .action-button:active {
+        transform: scale(0.95); /* Slightly reduce the size on click */
+        box-shadow: inset 0px 4px 8px rgba(0, 0, 0, 0.3); /* Create an inset shadow for a pressed effect */
+    }
 </style>
 
 <div class="Area-for-labeled-patterns">
@@ -267,44 +297,49 @@
             patternsContainer.scrollTop = patternsContainer.scrollHeight;
         }
 
+        function insertRowInTable(item, applyTextColor = false) {
+            // Create a new row in the table
+            const row = patternsTable.insertRow();
+
+            const itemCell = row.insertCell(0);
+            itemCell.className = 'items';
+            itemCell.textContent = item['Item Number'];
+
+            const startIndexCell = row.insertCell(1);
+            startIndexCell.className = 'start-index';
+            startIndexCell.textContent = item['Start Index'];
+
+            const endIndexCell = row.insertCell(2);
+            endIndexCell.className = 'end-index';
+            endIndexCell.textContent = item['End Index'];
+
+            const labelCell = row.insertCell(3);
+            labelCell.className = 'label';
+            labelCell.textContent = item['Label'];
+            
+            // Create a color box for the color cell
+            const colorCell = row.insertCell(4);
+            colorCell.className = 'color';
+            const colorDiv = document.createElement('div');
+            colorDiv.className = 'color-box';
+            colorDiv.style.backgroundColor = item['Color']; // Sets the background color dynamically
+            colorCell.appendChild(colorDiv);
+
+            // Conditionally apply/override custom text color to the label cell
+            if (applyTextColor) {
+                // Example of setting text color dynamically
+                labelCell.style.color = '#33ff57'; // Setting a tomato ('#FF6347') or green ('#397446') or lime green ('#472dda') color for Label
+            }
+        }
+
         // Function to repopulate the table with the given/retrieved data
         function populateTableWithPatterns(data, applyTextColor = false) {
             data.forEach(item => {
                 // Check if the label exists in labelsDataGlobal and its display property is set to 1
                 const matchingLabel = labelsDataGlobal.find(labelItem => labelItem.value === item['Label'] && labelItem.display === 1);
                 if (matchingLabel) { // Proceed only if a match is found and display is 1
-                    // Create a new row in the table
-                    const row = patternsTable.insertRow();
-
-                    const itemCell = row.insertCell(0);
-                    itemCell.className = 'items';
-                    itemCell.textContent = item['Item Number'];
-
-                    const startIndexCell = row.insertCell(1);
-                    startIndexCell.className = 'start-index';
-                    startIndexCell.textContent = item['Start Index'];
-
-                    const endIndexCell = row.insertCell(2);
-                    endIndexCell.className = 'end-index';
-                    endIndexCell.textContent = item['End Index'];
-
-                    const labelCell = row.insertCell(3);
-                    labelCell.className = 'label';
-                    labelCell.textContent = item['Label'];
-                    
-                    // Create a color box for the color cell
-                    const colorCell = row.insertCell(4);
-                    colorCell.className = 'color';
-                    const colorDiv = document.createElement('div');
-                    colorDiv.className = 'color-box';
-                    colorDiv.style.backgroundColor = item['Color']; // Sets the background color dynamically
-                    colorCell.appendChild(colorDiv);
-
-                    // Conditionally apply/override custom text color to the label cell
-                    if (applyTextColor) {
-                        // Example of setting text color dynamically
-                        labelCell.style.color = '#33ff57'; // Setting a tomato ('#FF6347') or green ('#397446') or lime green ('#472dda') color for Label
-                    }
+                    // Use the helper function to insert rows
+                    insertRowInTable(item, applyTextColor);
                 }
             });
         }
@@ -352,24 +387,66 @@
 
         // Helper function to create Delete and Cancel buttons
         function createDeleteCancelButtons() {
-            // Clear existing buttons if any
-            const existingButtons = document.getElementById('action-buttons');
-            if (existingButtons) existingButtons.remove();
+            // Create a new row for the buttons
+            const buttonRow = document.createElement('tr');
+            buttonRow.id = 'action-buttons'; // Give it an ID for future reference
 
-            // Create a new container for the buttons
-            const buttonContainer = document.createElement('div');
-            buttonContainer.id = 'action-buttons';
-            buttonContainer.style.marginTop = '10px';
-            buttonContainer.innerHTML = `
-                <button id="delete-btn">Delete</button>
-                <button id="cancel-btn">Cancel</button>
-            `;
-            // Append the buttons container below the table
-            patternsTableContainer.appendChild(buttonContainer);
+            // Create a new cell that spans across all columns
+            const buttonCell = document.createElement('td');
+            buttonCell.colSpan = 5; // Adjust this based on the number of columns in your table
+            buttonCell.style.padding = '10px';
+            buttonCell.style.textAlign = 'left'; // Align the buttons to the left
+
+            // Create Delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.id = 'delete-btn';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.classList.add('action-button', 'delete'); // Apply CSS classes
+
+            // Create Cancel button
+            const cancelBtn = document.createElement('button');
+            cancelBtn.id = 'cancel-btn';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.classList.add('action-button', 'cancel'); // Apply CSS classes
+
+            // Append buttons to the cell
+            buttonCell.appendChild(deleteBtn);
+            buttonCell.appendChild(cancelBtn);
+
+            // Append the cell to the row
+            buttonRow.appendChild(buttonCell);
+
+            // Append the button row right after the found item row
+            const patternsTable = document.getElementById('patterns-table').getElementsByTagName('tbody')[0];
+            patternsTable.appendChild(buttonRow);
+
+            // Add functionality to the Cancel button to repopulate the table with retrievedData
+            cancelBtn.addEventListener('click', function() {
+                resetTable(); // Clears the current table
+                populateTableWithPatterns(retrievedData); // Repopulates the table with retrievedData
+                scrollToBottom(); // Scroll to the bottom of the table
+            });
         }
 
-
-
+        searchBar.addEventListener('input', function() {
+            const searchValue = searchBar.value.trim();
+            if (!isNaN(searchValue) && searchValue !== '') {
+                // Check if the entered value is a number and exists in the retrievedData
+                const foundItem = retrievedData.find(item => item['Item Number'] === searchValue);
+                if (foundItem) {
+                    console.log("Item number found in retrieved data.");
+                    resetTable(); // Clear the table first
+                    // Use the helper function to add the found row
+                    insertRowInTable(foundItem);
+                    // Scroll to the bottom of the table
+                    scrollToBottom();
+                    // Create Delete and Cancel buttons below the table
+                    createDeleteCancelButtons();
+                } else {
+                    console.log("Item number not found in retrieved data.");
+                }
+            }
+        });  
 
         document.addEventListener('fileSelected', function(event) {
             resetTable(); // Reset the table when a new file is selected
@@ -386,16 +463,18 @@
             console.log("*** Click indices:", clickIndices);
             console.log("*** and Item number:", Item_number);
             // Construct new pattern object for consistency with the populateTableWithPatterns function
-            const newPattern = [{
+            const newPattern = {
                 'Item Number': Item_number,
                 'Start Index': clickIndices[0] || 'N/A',
                 'End Index': clickIndices[1] || 'N/A',
                 'Label': labeledPattern,
                 'Color': color
-            }];
-
+            };
+            // Add the new pattern to retrievedData array
+            retrievedData.push(newPattern);
+            console.log("$$$ retrieved data updated:", retrievedData);
             // Add the new pattern to the table using the same function
-            populateTableWithPatterns(newPattern, true);
+            populateTableWithPatterns([newPattern], true);
             // Scroll to bottom after the new pattern is added
             scrollToBottom();
             console.log("$$$ New pattern information added to the table.");
@@ -452,56 +531,6 @@
                 dropdownContent.style.display = 'none'; // Hide it
             }
         });
-    
-    
-        searchBar.addEventListener('input', function() {
-        const searchValue = searchBar.value.trim();
-
-        if (!isNaN(searchValue) && searchValue !== '') {
-            // Check if the entered value is a number and exists in the retrievedData
-            const foundItem = retrievedData.find(item => item['Item Number'] === searchValue);
-
-            if (foundItem) {
-                resetTable(); // Clear the table first
-
-                // Add a new row with the found item's data
-                const row = patternsTable.insertRow();
-
-                const checkboxCell = row.insertCell(0);
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkboxCell.appendChild(checkbox); // Add checkbox before item number
-
-                const itemCell = row.insertCell(1);
-                itemCell.textContent = foundItem['Item Number'];
-
-                const startIndexCell = row.insertCell(2);
-                startIndexCell.textContent = foundItem['Start Index'];
-
-                const endIndexCell = row.insertCell(3);
-                endIndexCell.textContent = foundItem['End Index'];
-
-                const labelCell = row.insertCell(4);
-                labelCell.textContent = foundItem['Label'];
-
-                const colorCell = row.insertCell(5);
-                const colorDiv = document.createElement('div');
-                colorDiv.className = 'color-box';
-                colorDiv.style.backgroundColor = foundItem['Color'];
-                colorCell.appendChild(colorDiv);
-
-                // Scroll to the bottom of the table
-                scrollToBottom();
-
-                // Create Delete and Cancel buttons below the table
-                createDeleteCancelButtons();
-            } else {
-                console.log("Item number not found in retrieved data.");
-            }
-        }
-    });
-
-    
-    
+      
     });
 </script>
