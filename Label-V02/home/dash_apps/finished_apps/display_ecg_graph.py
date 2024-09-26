@@ -108,7 +108,7 @@ app.layout = html.Div([
              label='Labels_Display_Status',
              channel_name='Labels_status_Channel'),  # Channel name for updates
     dcc.Store(id='click-data', data= {'Indices': None, 'Manual': None}, storage_type='memory'),  # Store for click data
-    dcc.Store(id='Button_Action_Store', data=None, storage_type='memory'),  # Store for handling consecutive 'undo' or 'refresh' actions.
+    # dcc.Store(id='Button_Action_Store', data=None, storage_type='memory'),  # Store for handling consecutive 'undo' or 'refresh' actions.
     dcc.Store(id='dummy-output', data=None, storage_type='memory'),
     dcc.Store(id='dummy-output_2', data=None, storage_type='memory'),  # I seem forced to use it, but it is not triggering anything
     dcc.Store(id='store_session_user_data', data={'User_name': None, 'Status': 'Empty'}, storage_type='memory'), # I am using this to prevent all instances of the app to be updated for all users.
@@ -403,14 +403,22 @@ def store_click_data(click_data, file_path_and_channel_data, No_file_path_and_ch
                 return {'Indices': [], 'Manual': False}
                 # raise PreventUpdate  # Prevent callback 
             
-        elif trigger_id == 'Button_Action': # 'refresh' or 'undo'
+        elif trigger_id == 'Button_Action': # 'refresh' or 'undo' or 'delete
             logger.info(f"\t\t\tConditional executed in store_click_data callback:\n\t\t\t\t\t\t-Action_var: {Action_var}\n")
             file_path = file_path_and_channel_data['File-path']
             channel = file_path_and_channel_data['Channel']
             action_to_take = Action_var['Action']
+            data_to_delete = Action_var['Click_Order']
             if file_path and channel:
-                # Handle 'refresh' or 'undo' action
-                handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do=action_to_take)
+                # Check if data_to_delete is a list and if it is empty or not
+                if action_to_take == 'delete':
+                # if isinstance(data_to_delete, list):
+                    # Handle 'Delete' button action
+                    logger.info(f"Data to delete: \n\t\tdata_to_delete = {data_to_delete}\n")
+                    handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do=action_to_take, delete_data=data_to_delete)
+                else:
+                    # Handle 'refresh' or 'undo' action
+                    handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do=action_to_take)
                 # Retrieve existing data
                 existing_values = handle_annotation_to_csv(full_file_path=file_path, selected_channel=channel, task_to_do='retrieve')
                 if existing_values:

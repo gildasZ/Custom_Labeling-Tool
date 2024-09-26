@@ -246,11 +246,14 @@
 
         document.addEventListener('buttonClick', function(event) {
             var action_var = event.detail.action;
-            console.log("   'buttonClick' event received:", action_var);
+            // Check if event.detail.data exists, if not, assign an empty list
+            var data_var = event.detail.data || [];
+            console.log("   'buttonClick' event received:", action_var, data_var);
             // Prepare the data to send with WebSocket
             var postData = {
-                type: 'Refresh_Save_Undo', // Specific type for this combined data
-                Action_var: action_var
+                type: 'Refresh_Save_Undo_Delete', // Specific type for this combined data
+                Action_var: action_var,
+                Data_var: data_var // Include the new Data_var for deletion
             };
             // Send the data to the server via WebSocket
             socket.send(JSON.stringify(postData));

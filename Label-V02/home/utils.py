@@ -15,7 +15,7 @@ from django.conf import settings  # Import Django settings
 # Setup logger
 logger = logging.getLogger('home')
 
-def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channel=None, annotation_data=None, task_to_do=''):
+def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channel=None, annotation_data=None, task_to_do='', delete_data=None):
     """
     Adds an annotation row to a CSV file, creating the file and necessary directories if they don't exist.
     
@@ -32,6 +32,8 @@ def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channe
                     'SaveAll' for saving all the working CSV files,
                     'refresh' for resetting the working CSV file.
                     'undo' for undoing the last annotation for the selected channel.
+                    'delete' for deleting a list of selected annotations for the selected channel.
+    - delete_data (list): A list of dictionaries, each containing 'Item Number', 'Start Index', 'End Index', 'Label', and 'Color' for the rows to delete.
 
     Returns sometimes:
     - list: A list of dictionaries containing the existing values for the selected channel, including the newly added element.
@@ -42,6 +44,9 @@ def handle_annotation_to_csv(channels=None, full_file_path=None, selected_channe
     if task_to_do == 'add':
         logger.info(f"Adding data to a working CSV file...\n")
         add_annotation_to_csv(channels, working_csv_file_path, selected_channel, annotation_data)
+    elif task_to_do == 'delete':
+        logger.info(f"Deleting data from a working CSV file...\n")
+        delete_annotation_from_csv(working_csv_file_path, selected_channel, delete_data)
     elif task_to_do == 'retrieve':
         logger.info(f"Retrieving existing annotations from working CSV file...\n")
         existing_values = retrieve_existing_annotations(working_csv_file_path, selected_channel)
@@ -175,6 +180,130 @@ def add_annotation_to_csv(channels, working_csv_file_path, selected_channel, ann
 
     except Exception as e:
         logger.error(f"Error in handle_annotation_to_csv / add_annotation_to_csv: \n\t{str(e)}\n")
+
+def delete_annotation_from_csv(working_csv_file_path, selected_channel, delete_data):
+    """
+    Deletes specific annotations from the CSV file for the selected channel based on delete_data,
+    and ensures that the item numbers are reorganized to be continuous after deletion.
+    
+    Parameters:
+    - working_csv_file_path (str): Full file path of the working CSV file.
+    - selected_channel (str): The channel selected for the annotation deletion.
+    - delete_data (list): A list of dictionaries, each containing 'Item Number', 'Start Index', 'End Index', 'Label', and 'Color' for the rows to delete.
+    """
+    try:
+        # Early exit if delete_data is empty
+        if not delete_data:
+            logger.info(f"No rows to delete. {working_csv_file_path} remains unchanged.\n")
+            return
+        # Create a temporary file for manipulation 
+        temp_file_path = Path(working_csv_file_path).with_suffix('.tmp')
+        with open(temp_file_path, mode='w', newline='') as temp_file:
+            pass  # This ensures the file is truncated (emptied) if it exists
+        # Open the working CSV file in read mode and the temporary file in write mode
+        with open(working_csv_file_path, mode='r', newline='') as csv_file, open(temp_file_path, mode='w', newline='') as temp_file:
+            reader = csv.reader(csv_file)
+            writer = csv.writer(temp_file)
+            # Read and write headers
+            headers = next(reader)
+            writer.writerow(headers)
+            # Get column indices related to the selected channel
+            item_num_col = headers.index(f'{selected_channel} Items')
+            start_idx_col = headers.index(f'{selected_channel} Start Index')
+            end_idx_col = headers.index(f'{selected_channel} End Index')
+            label_col = headers.index(f'{selected_channel} Label')
+            color_col = headers.index(f'{selected_channel} Color')
+            # Log the indices
+            logger.info(f"Column indices for selected channel '{selected_channel}':")
+            logger.info(f"Item Number Column Index: {item_num_col}")
+            logger.info(f"Start Index Column Index: {start_idx_col}")
+            logger.info(f"End Index Column Index: {end_idx_col}")
+            logger.info(f"Label Column Index: {label_col}")
+            logger.info(f"Color Column Index: {color_col}\n")
+            # Initialize item number counter and pending rows buffer
+            item_number = 1
+            pending_rows = []
+            # Iterate through rows, delete matching rows, and reorganize the item numbers
+            for row in reader:
+                # Flag to indicate if data for the selected lead should be updated
+                matched_in_delete_data = False
+                for delete_item in delete_data:               
+                    if (str(row[item_num_col]) == str(delete_item['Item Number']) and
+                        str(row[start_idx_col]) == str(delete_item['Start Index']) and
+                        str(row[end_idx_col]) == str(delete_item['End Index']) and
+                        str(row[label_col]) == str(delete_item['Label']) and
+                        str(row[color_col]) == str(delete_item['Color'])):
+                        # Clear the selected lead's data if there's a match
+                        logger.info(f"\nClearing selected lead data for row: {row}")
+                        logger.info(f"\nMatching delete_item: Item Number: {delete_item['Item Number']}, Start Index: {delete_item['Start Index']}, "
+                                    f"End Index: {delete_item['End Index']}, Label: {delete_item['Label']}, Color: {delete_item['Color']}")
+                        logger.info(f"\nMatching row:         Item Number: {row[item_num_col]}, Start Index: {row[start_idx_col]}, "
+                                    f"End Index: {row[end_idx_col]}, Label: {row[label_col]}, Color: {row[color_col]}\n\n")
+                        row[item_num_col] = ''
+                        row[start_idx_col] = ''
+                        row[end_idx_col] = ''
+                        row[label_col] = '' 
+                        row[color_col] = ''
+                        logger.info(f"Row after processing: {row}\n")
+                        # Remove the matched delete_item from delete_data for efficiency
+                        delete_data.remove(delete_item)
+                        matched_in_delete_data = True
+                        pending_rows.append(row) if any(row) else None # Append the modified row to the pending list only if there are non empty columns.
+                        break # Stop checking further delete_items
+
+                if not matched_in_delete_data:
+                    if (row[start_idx_col] or row[end_idx_col] or row[label_col] or row[color_col]):
+                        # The current row has data for the selected lead, merge it with the first row in pending_rows
+                        if pending_rows:
+                            merged_row = pending_rows.pop(0)  # Get the first row from the pending list
+                            merged_row[item_num_col] = item_number  # Update the item number to be continuous
+                            merged_row[start_idx_col] = row[start_idx_col]
+                            merged_row[end_idx_col] = row[end_idx_col]
+                            merged_row[label_col] = row[label_col]
+                            merged_row[color_col] = row[color_col]
+                            # Clear those elements from the current row
+                            row[item_num_col] = ''
+                            row[start_idx_col] = ''
+                            row[end_idx_col] = ''
+                            row[label_col] = '' 
+                            row[color_col] = ''
+                            pending_rows.append(row) if any(row) else None # Append the modified row to the pending list only if there are non empty columns.
+                            # Write the merged row to the file
+                            writer.writerow(merged_row)
+                            logger.info(f"Written merged row: {merged_row}")
+                            item_number += 1  # Increment the item number
+                        else:
+                            # Then, process the current row (still containing data)
+                            row[item_num_col] = item_number  # Assign the new item number for the current row
+                            writer.writerow(row)  # Write this row to the file
+                            logger.info(f"Written current row with item number: {row[item_num_col]}")
+                            item_number += 1  # Increment the item number
+                    else:
+                        # If the row contains no data for the selected lead, write all pending rows to the file
+                        while pending_rows:
+                            pending_row = pending_rows.pop(0)
+                            writer.writerow(pending_row)
+                            logger.info(f"Written pending row: {pending_row}")
+                        # Write the the current row of the loop that contains no data from for the selected lead
+                        writer.writerow(row)
+                        logger.info(f"Written current row with no data for the selected lead: {row}")
+                else:
+                    logger.info(f"Data for the selected lead was cleared for this row, no merge performed.\n")
+            # After the loop, write any remaining pending rows to the file
+            while pending_rows:
+                pending_row = pending_rows.pop(0)
+                writer.writerow(pending_row)
+                logger.info(f"Written remaining pending row: {pending_row}")
+
+        # Replace the original working CSV file with the temporary file. This will delete the temporary file.
+        os.replace(temp_file_path, working_csv_file_path)
+        if not delete_data:
+            logger.info(f"Rows deleted and item numbers reorganized in {working_csv_file_path}, and the temporary file was removed.\n")
+        else:
+            logger.warning(f"Some rows from delete_data were not found in {working_csv_file_path}. \nRemaining items: \n\t{delete_data}\n")
+
+    except Exception as e:
+        logger.error(f"Error in handle_annotation_to_csv / delete_annotation_from_csv: \n\t{str(e)}\n")
 
 def retrieve_existing_annotations(working_csv_file_path, selected_channel):
     """

@@ -98,11 +98,10 @@
         border-right: none; /* Ensures there is no border on the right side of the last cell */
     }
 
-    .items { width: 10%; }
+    .items { width: 15%; }
     .start-index, .end-index { width: 15%; }
-    .label { width: 35%; } /* Reduced from 45% for .delete*/
-    .delete { width: 10%; overflow: hidden;} /* New delete column */
-    .color { width: 10%; }
+    .label { width: 45%; }
+    .color { width: 10%;}
 
     .color-box {
         width: 18px; /* Specific width for the color box */
@@ -215,7 +214,7 @@
     }
 
     #search-bar {
-        width: 40%; /* Set the width of the search bar */
+        width: 30%; /* Set the width of the search bar */
         padding: 0px; /* Remove padding */
         margin-right: 10px; /* Add space between the search bar and the "Items" text */
         border-radius: 5px; /* Rounded corners */
@@ -251,75 +250,6 @@
         transform: scale(0.95); /* Slightly reduce the size on click */
         box-shadow: inset 0px 4px 8px rgba(0, 0, 0, 0.3); /* Create an inset shadow for a pressed effect */
     }
-
-    /* Additional styling for the checkbox in Delete column */
-    .delete-checkbox {
-        transform: scale(1.2); /* Adjust the size if needed */
-        cursor: pointer;
-    }
-
-    /* ------------------------------------- Delete button in headers tyles ------------------------------------- */
-    /* Style the Delete header button */
-    .delete-header-btn {
-        font-size: 18px;
-        color: #ffffff;
-        background-color: #353434; /* Dark background color */
-        padding: 6px 16px; /* Increase padding for a larger button */
-        border-radius: 8px;
-        border: 2px solid #ff6347; /* Thicker red border for more emphasis */
-        cursor: pointer;
-        transition: all 0.3s ease-in-out; /* Smooth transitions */
-        outline: none; /* Remove default outline */
-        position: relative;
-        overflow: hidden; /* For the glow effect */
-    }
-
-    /* Hover effect for the Delete header button */
-    .delete-header-btn:hover {
-        color: #ffffff; /* White text */
-        background-color: #ff6347; /* Vibrant red background */
-        border-color: #ff6347; /* Matching border with background */
-        box-shadow: 0px 0px 15px 5px rgba(255, 99, 71, 0.8); /* Glowing red shadow */
-        transform: scale(1.1); /* Increase size on hover */
-        font-weight: bold; /* Bold text on hover */
-        transform-origin: center; /* Prevent scaling from affecting the layout */
-    }
-
-    /* Add a glow effect while hovering */
-    .delete-header-btn::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,99,71,0.6) 10%, transparent 60%);
-        transition: opacity 0.3s;
-        opacity: 0;
-        z-index: 0;
-    }
-
-    .delete-header-btn:hover::before {
-        opacity: 1;
-    }
-
-    /* Click (active) effect */
-    .delete-header-btn:active {
-        background-color: #e74c3c; /* Darker red on click */
-        border-color: #ff6347; /* Border remains red */
-        box-shadow: inset 0px 4px 8px rgba(0, 0, 0, 0.4), 0px 0px 20px rgba(255, 99, 71, 0.8); /* Inner shadow + glow */
-        transform: scale(0.95); /* Slightly reduce size on click */
-        animation: shake 0.3s ease-in-out; /* Add a slight shake on click */
-        transform-origin: center; /* Ensure scaling doesn't break the layout */
-    }
-
-    /* Keyframes for the shake effect on click */
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-4px); }
-        50% { transform: translateX(4px); }
-        75% { transform: translateX(-4px); }
-    }
 </style>
 
 <div class="Area-for-labeled-patterns">
@@ -337,9 +267,6 @@
                 <!-- <div id="labelDropdown" class="dropdown-content"></div> -->
             </div>
             <div class="color">Color</div>
-            <div class="delete">
-                <button id="delete-header-btn" class="delete-header-btn">Delete</button>
-            </div>
         </div>
         <div class="patterns-table-container">
             <table id="patterns-table">
@@ -411,14 +338,6 @@
                 // Example of setting text color dynamically
                 labelCell.style.color = '#33ff57'; // Setting a tomato ('#FF6347') or green ('#397446') or lime green ('#472dda') color for Label
             }
-
-            // Add the "Delete" column with a checkbox
-            const deleteCell = row.insertCell(5); // Add a new cell for Delete
-            deleteCell.className = 'delete';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox'; // Create checkbox input
-            checkbox.className = 'delete-checkbox'; // Optional: Add a class to style it later
-            deleteCell.appendChild(checkbox); // Append checkbox to the cell
         }
 
         // Function to repopulate the table with the given/retrieved data
@@ -557,28 +476,6 @@
             });
         }
 
-        // Function to retrieve the data of selected rows (with checked checkboxes)
-        function getCheckedRowsData() {
-            const rows = document.querySelectorAll('#patterns-table tbody tr'); // Get all rows from the table
-            let selectedRowData = [];
-            // Loop through all rows to check for checked checkboxes
-            rows.forEach(row => {
-                const checkbox = row.querySelector('.delete-checkbox'); // Find the checkbox in the current row
-                if (checkbox && checkbox.checked) {
-                    // Retrieve the Item Number (or identifier) from the current row
-                    const itemNumber = row.cells[0].textContent;
-                    // Use retrievedData to find the matching item
-                    const foundItem = retrievedData.find(item => item['Item Number'] === itemNumber);
-
-                    // If the item is found in retrievedData, push it to the selectedRowData array
-                    if (foundItem) {
-                        selectedRowData.push(foundItem);
-                    }
-                }
-            });
-            return selectedRowData; // Return the array of selected row data
-        }
-
         searchBar.addEventListener('input', function() {
             const searchValue = searchBar.value.trim();
             if (!isNaN(searchValue) && searchValue !== '') {
@@ -682,14 +579,6 @@
                 dropdownContent.style.display = 'none'; // Hide it
             }
         });
-    
-        document.getElementById('delete-header-btn').addEventListener('click', function() {
-            console.log("Delete button clicked!");
-            // Get the checked rows' data using the modified function
-            const selectedRowsData = getCheckedRowsData();
-            console.log("selectedRowsData to dispatch: ", selectedRowsData);
-            // Dispatch the event with the retrieved data
-            dispatchDeleteEvent(selectedRowsData);
-        });
+      
     });
 </script>

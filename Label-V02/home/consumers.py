@@ -153,9 +153,10 @@ class ECGConsumer(AsyncWebsocketConsumer):
             self.handle_condition = True
             
         #______________________________________________________________________________
-        elif data['type'] == 'Refresh_Save_Undo':
+        elif data['type'] == 'Refresh_Save_Undo_Delete':
             action_var = data['Action_var']
-            logger.info(f"\nDjango received \n\t-Action_var: {action_var}\n")
+            data_var = data['Data_var']
+            logger.info(f"\nDjango received \n\t-Action_var: {action_var}\n\t-Data_var: {data_var}\n")
 
             if action_var in ('refresh', 'undo'):
                 logger.info(f"\t\t\tConditional executed:\n\t\t\t\t\t\t-Action_var: {action_var}\n")
@@ -172,23 +173,23 @@ class ECGConsumer(AsyncWebsocketConsumer):
                                 label = 'This_Action',  # Fixed label for the second pipe
                                 value = Data_to_Send)
                     logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}")
-
-            elif action_var == 'save':
-                logger.info(f"\t\t\tConditional executed:\n\t\t\t\t\t\t-Action_var: {action_var}\n")
-                logger.info(f"\tCurrent file path: {self.current_file_path}")
-                logger.info(f"\tCurrent extracted channels: {self.channels_values}")
-                if self.current_file_path:
-                    message, status = handle_annotation_to_csv(full_file_path=self.current_file_path, task_to_do='save')
-                    await self.send(text_data=json.dumps({
-                                                        'type': 'Save_Feedback',
-                                                        'Message': message,
-                                                        'Status': status
-                                                    }))
                     
-            elif action_var == 'SaveAll':
+            elif action_var == 'delete':
+                logger.info(f"\t\t\tConditional executed:\n\t\t\t\t\t\t-Action_var: {action_var}\n")
+                if self.handle_condition:
+                    Data_to_Send = {'Action': action_var, 'Click_Order': data_var}
+                    await async_send_to_pipe_channel(
+                                channel_name = 'This_Action_Channel',  # Fixed channel name for the second pipe
+                                label = 'This_Action',  # Fixed label for the second pipe
+                                value = Data_to_Send)
+                    logger.info(f"\n+++++ Django sent Message Channel data to ppd.Pipe: {Data_to_Send}\n\tfor self.User_name = {self.User_name}")
+
+            elif action_var in ('save', 'SaveAll'):
                 logger.info(f"\t\t\tConditional executed:\n\t\t\t\t\t\t-Action_var: {action_var}\n")
                 if self.current_file_path:
-                    message, status = handle_annotation_to_csv(full_file_path=self.current_file_path, task_to_do='SaveAll')
+                    logger.info(f"\tCurrent file path: {self.current_file_path}")
+                    logger.info(f"\tCurrent extracted channels: {self.channels_values}")
+                    message, status = handle_annotation_to_csv(full_file_path=self.current_file_path, task_to_do=action_var)
                     await self.send(text_data=json.dumps({
                                                         'type': 'Save_Feedback',
                                                         'Message': message,
