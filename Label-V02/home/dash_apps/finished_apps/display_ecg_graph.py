@@ -73,6 +73,7 @@ app.layout = html.Div([
         'border-radius': '10px',
         'font-weight': 'bold',
     }),
+    
     dcc.Graph(id='ecg-graph', style={
                                     "backgroundColor": "#e4451e",
                                     'color': '#ffffff',
@@ -138,7 +139,6 @@ app.layout = html.Div([
         style={'display': 'none', 'position': 'fixed', 'top': '20%', 'left': '30%', 'width': '40%', 'padding': '20px', 'border': '1px solid black', 'background-color': 'white', 'z-index': '1000'}
     ),
 ])
-
 
 #----------------------------------------------------------------------------------------------------------
 
@@ -716,7 +716,12 @@ def update_graph(file_path_and_channel_data, No_file_path_and_channel_data, clic
 # Function to plot waveform data using Plotly
 def plot_waveform(data, plot_title, Title_Color, labels_pipe_value, existing_values=None, click_data=None):
     logger.info(f"plot_waveform function was called!\n")
-    # Initialize figure with layout that supports animations
+    # Initialize figure with layout that supports animations and small ECG-like grids
+
+    # x_range = len(data) if data else 100  
+    # y_range = max(data) - min(data) if data else 10 
+    # dtick_x = x_range / 100 
+    # dtick_y = y_range / 10 
     fig = go.Figure(
         layout={
             'xaxis': {
@@ -724,12 +729,20 @@ def plot_waveform(data, plot_title, Title_Color, labels_pipe_value, existing_val
                 'color': 'yellow',
                 'autorange': True,  # Ensure axis range adjusts to fit the data
                 # 'uirevision': 'constant'  # Maintain user interactions like zoom/pan
+                'showgrid': True,   # Show grid lines
+                'gridcolor': '#404040',  # A dark grey color of the vertical grid lines
+                'gridwidth': 1,     # Make the grid lines thin
+                'dtick': 50,       # Smaller grid spacing for ECG
             },
             'yaxis': {
                 'title': 'Amplitude',
                 'color': 'lightgreen',
                 'autorange': True,  # Ensure axis range adjusts to fit the data
                 # 'uirevision': 'constant'  # Maintain user interactions
+                'showgrid': True,   # Show grid lines
+                'gridcolor': '#404040',  # A dark grey color of the horizontal grid lines
+                'gridwidth': 1,     # Make the grid lines thin
+                'dtick': 10,       # Smaller grid spacing for ECG
             },
             'title': {'text': plot_title, 'font': {'size': 24, 'color': Title_Color, 'family': 'Arial, sans-serif'}},
             'paper_bgcolor': '#27293d',
