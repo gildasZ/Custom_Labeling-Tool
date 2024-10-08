@@ -73,7 +73,6 @@ app.layout = html.Div([
         'border-radius': '10px',
         'font-weight': 'bold',
     }),
-    
     dcc.Graph(id='ecg-graph', style={
                                     "backgroundColor": "#e4451e",
                                     'color': '#ffffff',
