@@ -47,7 +47,7 @@ Before running the WebApp, you need to set up your environment:
      ```python
      BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"INSERT YOUR PATH HERE")
      # Example
-     # BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"C:\Users\gildasZ\OneDrive\Documents\LABORATORY\Testing GitHub\Custom_Labeling-Tool")
+     # BASE_FILE_PATH = os.getenv('BASE_FILE_PATH', r"C:\Users\gildasZ\OneDrive\Documents\Custom_Labeling-Tool")
      ```
 
 4. **Virtual Environment:**
@@ -161,5 +161,7 @@ Open your web browser and navigate to [http://127.0.0.1:8000/](http://127.0.0.1:
 ## Contributing
 Feel free to fork this project and contribute by submitting a pull request. I appreciate your input!
 
+You can also check out my other projects on my GitHub profile: [https://github.com/gildasZ](https://github.com/gildasZ)
+
 ## License
-This project is licensed under the MIT License - see the LICENSE.md file for details.
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
