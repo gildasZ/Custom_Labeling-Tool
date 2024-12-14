@@ -111,7 +111,7 @@
         let root = {};
         files.forEach(file => {
             // Process only XML files
-            if (file.path.endsWith('.xml')) {
+            if (file.path.toLowerCase().endsWith('.xml')) {
                 const pathParts = file.path.split('/');
                 let currentPart = root;
                 for (let part of pathParts.slice(0, -1)) { // navigate through or create folder structure
